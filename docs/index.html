@@ -61,6 +61,8 @@
        text-align:center;border-radius:50%;background:var(--fill);color:var(--fillfg);
        border:none;font-size:11px;cursor:pointer;padding:0}
   .hide{display:none!important}
+  canvas.preview{width:100%;height:22px;display:block;margin-top:4px;border-radius:5px;
+       background:#000;border:1px solid var(--line)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .note{font-size:.78rem;color:var(--sub);margin-top:10px}
 </style>
@@ -223,6 +225,17 @@ function chanEditor(hostId, chanKey, title){
     pal.appendChild(add);
   }
   box.appendChild(pal);
+
+  // 動くプレビュー
+  const pl=document.createElement('label'); pl.textContent='プレビュー';
+  box.appendChild(pl);
+  const cv=document.createElement('canvas'); cv.className='preview';
+  cv.width=PREVIEW_N*5; cv.height=22;
+  box.appendChild(cv);
+  previews[chanKey]={ canvas:cv, ctx:cv.getContext('2d'),
+    get:()=>lib[curIdx]?lib[curIdx][chanKey]:null,
+    buf:Array.from({length:PREVIEW_N},()=>[0,0,0]) };
+
   host.appendChild(box);
 }
 function mkField(label,el){ const d=document.createElement('div');
@@ -324,6 +337,51 @@ $('btnImport').onclick=async()=>{ const slot=+$('devSlot').value;
   const p={ name:'スロット'+slot+'取込', front:decodeChan(dv,0), back:decodeChan(dv,23),
     enFront:!!(dv.getUint8(46)&1), enBack:!!(dv.getUint8(46)&2) };
   lib.push(p); curIdx=lib.length-1; save(); renderAll(); };
+
+// ===== 動くプレビュー（ファームの演出ロジックをJSで同等再現）=====
+const PREVIEW_N = 60;
+let previews = {};
+const mapJS=(v,a,b,c,d)=>Math.floor((v-a)*(d-c)/(b-a))+c;
+const scale8JS=(x,s)=>Math.floor(x*s/255);
+const blendJS=(a,b,f)=>[0,1,2].map(k=>Math.round(a[k]+(b[k]-a[k])*f/255));
+const nscaleV=(c,s)=>c.map(v=>v===0?0:Math.max(1,Math.floor(v*s/255)));
+const beatsin8JS=(bpm,t)=>Math.round(128+127*Math.sin((t/60000)*bpm*2*Math.PI));
+const palC=(ch,i)=>{const n=ch.colors.length||1;return ch.colors[i%n].slice();};
+function paletteAtJS(ch,t){ const n=ch.colors.length||1; if(n===1)return palC(ch,0);
+  const s=t*n, seg=Math.floor(s/256), f=s&255; return blendJS(palC(ch,seg%n),palC(ch,(seg+1)%n),f); }
+
+function renderChannelJS(ch,n,t,buf){
+  const nc=ch.colors.length||1, out=buf;
+  switch(ch.effect){
+    case 0: for(let i=0;i<n;i++) out[i]=palC(ch,0); break;
+    case 1:{ const bpm=mapJS(ch.speed,0,255,4,30);
+      if(nc>=2){ const col=paletteAtJS(ch,beatsin8JS(bpm,t)); for(let i=0;i<n;i++) out[i]=col.slice(); }
+      else{ const col=nscaleV(palC(ch,0),scale8JS(beatsin8JS(bpm,t),200)+55); for(let i=0;i<n;i++) out[i]=col.slice(); }
+      break; }
+    case 2:{ const blk=ch.period||1, scroll=ch.speed===0?0:Math.floor(t/mapJS(ch.speed,1,255,400,20));
+      for(let i=0;i<n;i++) out[i]=palC(ch,Math.floor((i+scroll)/blk)%nc); break; }
+    case 3:{ const denom=17-mapJS(ch.speed,0,255,2,15);
+      for(let i=0;i<n;i++) out[i]=paletteAtJS(ch,(i*8+Math.floor(t/denom))&255); break; }
+    case 4:{ for(let i=0;i<n;i++) out[i]=out[i]?out[i].map(v=>Math.floor(v*215/255)):[0,0,0];
+      const div=Math.max(1,mapJS(ch.speed,0,255,80,10)), step=Math.floor(t/div);
+      for(let k=0;k<nc;k++){ const pos=(step+k*Math.floor(n/nc))%n; out[pos]=nscaleV(palC(ch,k),ch.brightness); }
+      return out; }  // chaseは点配置時に明るさ適用済み
+  }
+  if(ch.brightness<255) for(let i=0;i<n;i++) out[i]=nscaleV(out[i],ch.brightness);
+  return out;
+}
+function animate(t){
+  for(const key in previews){ const pv=previews[key];
+    if(!pv.canvas.isConnected){ delete previews[key]; continue; }
+    const ch=pv.get(); if(!ch) continue;
+    const cols=renderChannelJS(ch,PREVIEW_N,t,pv.buf);
+    const g=pv.ctx, W=pv.canvas.width, H=pv.canvas.height, w=W/PREVIEW_N;
+    for(let i=0;i<PREVIEW_N;i++){ const c=cols[i];
+      g.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; g.fillRect(i*w,0,Math.ceil(w),H); }
+  }
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
 
 // init
 if(!navigator.bluetooth){ $('btnConnect').disabled=true;
