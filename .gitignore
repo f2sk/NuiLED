@@ -1,0 +1,9 @@
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+*.bin
+*.elf
+
+# OS
+.DS_Store
+Thumbs.db
