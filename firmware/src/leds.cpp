@@ -13,66 +13,85 @@ void ledsInit() {
   FastLED.clear(true);
 }
 
-// Presetのパラメータを解釈して1フレーム描く（データ駆動エンジン）
-void ledsRender(const AppState& s, const Preset& p, uint32_t now) {
-  const CRGB front = CRGB(p.frontR, p.frontG, p.frontB);
-  const CRGB backA = CRGB(p.backR1, p.backG1, p.backB1);
-  const CRGB backB = CRGB(p.backR2, p.backG2, p.backB2);
+// パレットを t(0-255) で滑らかに巡回した色
+static CRGB paletteAt(const ChannelPreset& c, uint8_t t) {
+  uint8_t n = c.numColors ? c.numColors : 1;
+  if (n == 1) return palColor(c, 0);
+  uint16_t scaled = (uint16_t)t * n;   // 0..n*255
+  uint8_t seg = scaled >> 8;           // 0..n-1
+  uint8_t f = scaled & 0xFF;
+  return blend(palColor(c, seg), palColor(c, seg + 1), f);
+}
 
-  // チェイス以外は毎フレームクリア（チェイスは残像フェードのため保持）
-  if (p.effect != EFF_CHASE) {
-    fill_solid(frontLeds, NUM_FRONT, CRGB::Black);
-    fill_solid(backLeds,  NUM_BACK,  CRGB::Black);
-  }
+// 1チャンネル分を描画（演出エンジン本体）
+static void renderChannel(CRGB* buf, uint16_t n, const ChannelPreset& c, uint32_t now) {
+  const uint8_t nc = c.numColors ? c.numColors : 1;
 
-  switch (p.effect) {
+  switch (c.effect) {
     case EFF_SOLID:
-      fill_solid(frontLeds, NUM_FRONT, front);
-      fill_solid(backLeds,  NUM_BACK,  backA);
+      fill_solid(buf, n, palColor(c, 0));
       break;
 
     case EFF_BREATH: {
-      fill_solid(frontLeds, NUM_FRONT, front);
-      uint8_t bpm = map(p.speed, 0, 255, 4, 30);
-      uint8_t b = beatsin8(bpm);                 // 0-255
-      CRGB c = blend(backA, backB, b);
-      c.nscale8_video(scale8(b, 200) + 55);      // 明るさも緩く揺らす
-      fill_solid(backLeds, NUM_BACK, c);
-      break;
-    }
-
-    case EFF_WAVE: {
-      fill_solid(frontLeds, NUM_FRONT, front);
-      uint8_t denom = 17 - (uint8_t)map(p.speed, 0, 255, 2, 16); // 速度で流れる速さ
-      for (uint16_t i = 0; i < NUM_BACK; i++) {
-        uint8_t w = sin8(i * 8 + (uint8_t)(now / denom));
-        CRGB c = blend(backA, backB, w);
-        c.nscale8_video(w);
-        backLeds[i] = c;
+      uint8_t bpm = map(c.speed, 0, 255, 4, 30);
+      if (nc >= 2) {                      // 2色以上：色をゆらす
+        fill_solid(buf, n, paletteAt(c, beatsin8(bpm)));
+      } else {                            // 1色：明滅
+        CRGB col = palColor(c, 0);
+        col.nscale8_video(scale8(beatsin8(bpm), 200) + 55);
+        fill_solid(buf, n, col);
       }
       break;
     }
 
-    case EFF_CHASE: {
-      fadeToBlackBy(frontLeds, NUM_FRONT, 40);
-      fadeToBlackBy(backLeds,  NUM_BACK,  40);
-      uint16_t div = map(p.speed, 0, 255, 80, 15);
+    case EFF_ALTERNATE: {                 // 交互：周期＝ブロック長、任意で流す
+      uint8_t blk = c.period ? c.period : 1;
+      uint16_t scroll = (c.speed == 0) ? 0 : (uint16_t)(now / map(c.speed, 1, 255, 400, 20));
+      for (uint16_t i = 0; i < n; i++) {
+        uint8_t idx = ((i + scroll) / blk) % nc;
+        buf[i] = palColor(c, idx);
+      }
+      break;
+    }
+
+    case EFF_WAVE: {                      // パレットのグラデを流す
+      uint8_t denom = 17 - (uint8_t)map(c.speed, 0, 255, 2, 15);
+      for (uint16_t i = 0; i < n; i++)
+        buf[i] = paletteAt(c, (uint8_t)(i * 8 + now / denom));
+      break;
+    }
+
+    case EFF_CHASE: {                     // パレット各色を等間隔で走らせる
+      fadeToBlackBy(buf, n, 40);
+      uint16_t div = map(c.speed, 0, 255, 80, 10);
       if (div < 1) div = 1;
       uint16_t step = now / div;
-      frontLeds[step % NUM_FRONT] = front;
-      backLeds[step % NUM_BACK]   = backA;
-      backLeds[(step + NUM_BACK / 2) % NUM_BACK] = backB;
+      for (uint8_t k = 0; k < nc; k++) {
+        uint16_t pos = (step + (uint16_t)k * (n / nc)) % n;
+        buf[pos] = palColor(c, k);
+      }
       break;
     }
 
     default:
-      fill_solid(frontLeds, NUM_FRONT, front);
+      fill_solid(buf, n, palColor(c, 0));
       break;
   }
 
-  // Front/Back 個別マスク適用
-  if (!(s.channelMask & CH_FRONT)) fill_solid(frontLeds, NUM_FRONT, CRGB::Black);
-  if (!(s.channelMask & CH_BACK))  fill_solid(backLeds,  NUM_BACK,  CRGB::Black);
+  // チャンネル基本明るさを適用（グローバルマスタはFastLED.show側で掛かる）
+  if (c.brightness < 255)
+    for (uint16_t i = 0; i < n; i++) buf[i].nscale8_video(c.brightness);
+}
+
+void ledsRender(const AppState& s, const Preset& p, uint32_t now) {
+  const bool fe = (p.flags & CH_FRONT) && (s.channelMask & CH_FRONT);
+  const bool be = (p.flags & CH_BACK)  && (s.channelMask & CH_BACK);
+
+  if (fe) renderChannel(frontLeds, NUM_FRONT, p.front, now);
+  else    fill_solid(frontLeds, NUM_FRONT, CRGB::Black);
+
+  if (be) renderChannel(backLeds, NUM_BACK, p.back, now);
+  else    fill_solid(backLeds, NUM_BACK, CRGB::Black);
 }
 
 void ledsShow() {

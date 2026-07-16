@@ -23,21 +23,45 @@ constexpr uint8_t BRIGHTNESS_LEVELS[] = {77, 128, 179, 255};
 constexpr uint8_t NUM_BRIGHTNESS = sizeof(BRIGHTNESS_LEVELS);
 
 // ===== プリセットスロット =====
-constexpr uint8_t NUM_SLOTS = 8;        // 工場4 + ユーザー4（全編集可）
+constexpr uint8_t NUM_SLOTS  = 8;       // 工場4 + ユーザー4（全編集可）
+constexpr uint8_t MAX_COLORS = 6;       // パレット最大色数（可変。UI/BLE/NVS共通）
 
 // ===== 演出タイプ =====
-enum Effect : uint8_t { EFF_SOLID = 0, EFF_BREATH = 1, EFF_WAVE = 2, EFF_CHASE = 3, EFF_COUNT };
+enum Effect : uint8_t {
+  EFF_SOLID     = 0,  // 単色（palette[0]）
+  EFF_BREATH    = 1,  // ブレス（1色=明滅 / 2色以上=色ゆらぎ）
+  EFF_ALTERNATE = 2,  // 交互（周期＝ブロック長、パレットを繰り返し）
+  EFF_WAVE      = 3,  // ウェーブ（パレットのグラデを流す）
+  EFF_CHASE     = 4,  // チェイス（パレット各色を走らせる）
+  EFF_COUNT
+};
 
-// ===== プリセット（12byte固定：NVS/BLEで同一レイアウトを使う） =====
-struct Preset {
-  uint8_t effect;                 // Effect
+// ===== チャンネル別プリセット（Front/Back で共通の演出エンジン）=====
+// 23byte固定：effect,speed,period,brightness,numColors, palette(RGB×MAX_COLORS)
+struct ChannelPreset {
+  uint8_t effect;
   uint8_t speed;                  // 演出速度 0-255
-  uint8_t frontR, frontG, frontB; // Front色
-  uint8_t backR1, backG1, backB1; // Back色A
-  uint8_t backR2, backG2, backB2; // Back色B（グラデ/ブレス用）
+  uint8_t period;                 // 交互のブロック長(LED) 等
+  uint8_t brightness;             // チャンネル基本明るさ 0-255（×グローバルマスタ）
+  uint8_t numColors;              // 1..MAX_COLORS
+  uint8_t pal[MAX_COLORS * 3];    // RGB × MAX_COLORS
+};
+static_assert(sizeof(ChannelPreset) == 5 + MAX_COLORS * 3, "ChannelPreset size");
+
+// ===== プリセット（Front/Back 各チャンネル＋有効フラグ）=====
+struct Preset {
+  ChannelPreset front;
+  ChannelPreset back;
   uint8_t flags;                  // bit0=Front有効, bit1=Back有効（=CH_*）
 };
-static_assert(sizeof(Preset) == 12, "Preset must be 12 bytes (NVS/BLE共通レイアウト)");
+static_assert(sizeof(Preset) == sizeof(ChannelPreset) * 2 + 1, "Preset size (NVS/BLE共通)");
+
+// パレットのi番目をCRGBで取得
+inline CRGB palColor(const ChannelPreset& c, uint8_t i) {
+  uint8_t n = c.numColors ? c.numColors : 1;
+  i %= n;
+  return CRGB(c.pal[i * 3], c.pal[i * 3 + 1], c.pal[i * 3 + 2]);
+}
 
 // ===== 基本色（工場出荷プリセットで使用） =====
 const CRGB COL_WARM_WHITE = CRGB(255, 145, 65);  // 暖色寄りの白（R満・G中・B低）

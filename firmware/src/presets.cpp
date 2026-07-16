@@ -6,24 +6,83 @@
 static Preset  g_slots[NUM_SLOTS];
 static Preferences prefsP;
 
-// 工場出荷プリセット（slot0-3=仕様書section7の4種、slot4-7=派生）
+// 基本色（RGBバイト列）
+static const uint8_t WARM[3]   = {255, 145, 65};
+static const uint8_t PINK[3]   = {255, 40, 90};
+static const uint8_t ORANGE[3] = {255, 90, 0};
+
+// チャンネルを組み立て（rgbはnc色ぶんのRGB連結）
+static void mkChan(ChannelPreset& c, uint8_t eff, uint8_t sp, uint8_t per,
+                   uint8_t bri, uint8_t nc, const uint8_t* rgb) {
+  c.effect = eff; c.speed = sp; c.period = per; c.brightness = bri;
+  c.numColors = nc;
+  memset(c.pal, 0, sizeof(c.pal));
+  memcpy(c.pal, rgb, (size_t)nc * 3);
+}
+
+// 複数色を連結した一時バッファ生成用
+static void cat2(uint8_t* dst, const uint8_t* a, const uint8_t* b) {
+  memcpy(dst, a, 3); memcpy(dst + 3, b, 3);
+}
+static void cat3(uint8_t* dst, const uint8_t* a, const uint8_t* b, const uint8_t* c) {
+  memcpy(dst, a, 3); memcpy(dst + 3, b, 3); memcpy(dst + 6, c, 3);
+}
+
 static void factory() {
-  //          effect     speed  front(R,G,B)   backA(R,G,B)  backB(R,G,B)  flags
-  g_slots[0] = { EFF_SOLID,  128, 255,145,65,   0,0,0,        0,0,0,        CH_FRONT }; // 暖白のみ
-  g_slots[1] = { EFF_BREATH,  64, 255,145,65,   255,40,90,    255,90,0,     CH_BOTH  }; // 暖白+桃橙ブレス
-  g_slots[2] = { EFF_WAVE,   128, 255,145,65,   255,90,0,     255,40,90,    CH_BOTH  }; // 桃橙ウェーブ
-  g_slots[3] = { EFF_CHASE,  128, 255,145,65,   255,40,90,    255,90,0,     CH_BOTH  }; // チェイス
-  g_slots[4] = { EFF_SOLID,  128, 255,120,40,   255,40,90,    0,0,0,        CH_BOTH  }; // 暖白+桃solid
-  g_slots[5] = { EFF_BREATH,  40, 0,0,0,        255,40,90,    255,90,0,     CH_BACK  }; // Back桃橙ブレスのみ
-  g_slots[6] = { EFF_WAVE,   200, 255,145,65,   255,40,90,    255,90,0,     CH_BACK  }; // Back速ウェーブ
-  g_slots[7] = { EFF_SOLID,  128, 255,145,65,   0,0,0,        0,0,0,        CH_FRONT }; // 暖白のみ(予備)
+  uint8_t two[6], three[9];
+
+  // slot0: 暖白のみ（Front単色、Back無効）
+  mkChan(g_slots[0].front, EFF_SOLID, 0, 0, 255, 1, WARM);
+  mkChan(g_slots[0].back,  EFF_SOLID, 0, 0, 255, 1, WARM);
+  g_slots[0].flags = CH_FRONT;
+
+  // slot1: 暖白 + 桃橙ブレス
+  cat2(two, PINK, ORANGE);
+  mkChan(g_slots[1].front, EFF_SOLID,  0, 0, 255, 1, WARM);
+  mkChan(g_slots[1].back,  EFF_BREATH, 64, 0, 230, 2, two);
+  g_slots[1].flags = CH_BOTH;
+
+  // slot2: 暖白 + 桃橙ウェーブ
+  cat2(two, ORANGE, PINK);
+  mkChan(g_slots[2].front, EFF_SOLID, 0, 0, 255, 1, WARM);
+  mkChan(g_slots[2].back,  EFF_WAVE, 128, 0, 230, 2, two);
+  g_slots[2].flags = CH_BOTH;
+
+  // slot3: 暖白 + 桃橙チェイス
+  cat2(two, PINK, ORANGE);
+  mkChan(g_slots[3].front, EFF_SOLID,  0, 0, 255, 1, WARM);
+  mkChan(g_slots[3].back,  EFF_CHASE, 128, 0, 255, 2, two);
+  g_slots[3].flags = CH_BOTH;
+
+  // slot4: 暖白 + 3色交互（周期5LED）
+  cat3(three, PINK, ORANGE, WARM);
+  mkChan(g_slots[4].front, EFF_SOLID,     0, 0, 255, 1, WARM);
+  mkChan(g_slots[4].back,  EFF_ALTERNATE, 40, 5, 230, 3, three);
+  g_slots[4].flags = CH_BOTH;
+
+  // slot5: Back桃橙ブレスのみ（Front無効）
+  cat2(two, PINK, ORANGE);
+  mkChan(g_slots[5].front, EFF_SOLID,  0, 0, 255, 1, WARM);
+  mkChan(g_slots[5].back,  EFF_BREATH, 40, 0, 230, 2, two);
+  g_slots[5].flags = CH_BACK;
+
+  // slot6: Back速ウェーブのみ
+  cat2(two, PINK, ORANGE);
+  mkChan(g_slots[6].front, EFF_SOLID, 0, 0, 255, 1, WARM);
+  mkChan(g_slots[6].back,  EFF_WAVE, 220, 0, 230, 2, two);
+  g_slots[6].flags = CH_BACK;
+
+  // slot7: 暖白のみ（予備）
+  mkChan(g_slots[7].front, EFF_SOLID, 0, 0, 255, 1, WARM);
+  mkChan(g_slots[7].back,  EFF_SOLID, 0, 0, 255, 1, WARM);
+  g_slots[7].flags = CH_FRONT;
 }
 
 void presetsLoad() {
   prefsP.begin("nuiled_ps", true);
   size_t got = prefsP.getBytes("slots", g_slots, sizeof(g_slots));
   prefsP.end();
-  if (got != sizeof(g_slots)) {   // 未初期化 or サイズ不一致
+  if (got != sizeof(g_slots)) {   // 未初期化 or サイズ不一致（型変更含む）
     factory();
     presetsSave();
   }

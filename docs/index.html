@@ -3,272 +3,332 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NuiLED コントローラ</title>
+<title>NuiLED</title>
 <style>
-  :root {
-    --bg:#f5f5f7; --card:#ffffff; --fg:#1d1d1f; --sub:#6e6e73;
-    --border:#d2d2d7; --accent:#e0507a; --accent2:#f0912f; --ok:#2e9e5b; --ng:#c0392b;
+  :root{
+    --bg:#fafafa; --panel:#fff; --fg:#18181b; --sub:#71717a; --line:#e4e4e7;
+    --fill:#18181b; --fillfg:#fafafa; --hover:#f4f4f5; --danger:#b91c1c;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#161618; --card:#232326; --fg:#f5f5f7; --sub:#9a9aa0; --border:#3a3a3e; }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#0e0e10; --panel:#1a1a1d; --fg:#e7e7ea; --sub:#8b8b92; --line:#2a2a2e;
+           --fill:#e7e7ea; --fillfg:#0e0e10; --hover:#242427; }
   }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-         background:var(--bg); color:var(--fg); line-height:1.5; }
-  .wrap { max-width:560px; margin:0 auto; padding:16px; }
-  h1 { font-size:1.3rem; margin:.2em 0; }
-  .sub { color:var(--sub); font-size:.85rem; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:12px;
-          padding:14px; margin:12px 0; }
-  .card h2 { font-size:.95rem; margin:0 0 10px; color:var(--sub); font-weight:600;
-             text-transform:uppercase; letter-spacing:.04em; }
-  button { font:inherit; padding:9px 14px; border-radius:9px; border:1px solid var(--border);
-           background:var(--card); color:var(--fg); cursor:pointer; }
-  button:hover { border-color:var(--accent); }
-  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
-  button:disabled { opacity:.4; cursor:not-allowed; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .row > * { flex:0 0 auto; }
-  .grid8 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .slot { text-align:center; padding:10px 0; }
-  .slot.active { background:var(--accent); border-color:var(--accent); color:#fff; }
-  label { font-size:.85rem; color:var(--sub); display:block; margin:10px 0 3px; }
-  select, input[type=range] { width:100%; font:inherit; padding:6px; border-radius:8px;
-           border:1px solid var(--border); background:var(--card); color:var(--fg); }
-  .colors { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .colors label { text-align:center; }
-  input[type=color] { width:100%; height:40px; border:1px solid var(--border);
-           border-radius:8px; background:none; cursor:pointer; }
-  .checks { display:flex; gap:16px; margin-top:10px; }
-  .checks label { display:flex; align-items:center; gap:6px; margin:0; }
-  #status { font-size:.85rem; padding:6px 10px; border-radius:8px; display:inline-block; }
-  .disconnected { color:var(--ng); } .connected { color:var(--ok); }
-  .hint { font-size:.8rem; color:var(--sub); margin-top:8px; }
-  .disabled { pointer-events:none; opacity:.45; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5}
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px 60px}
+  header{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  header h1{font-size:1.15rem;font-weight:600;letter-spacing:.02em;margin:0}
+  header .v{font-size:.75rem;color:var(--sub)}
+  .lead{color:var(--sub);font-size:.85rem;margin:0 0 18px}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+  .shead{font-size:.72rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+         color:var(--sub);margin:0 0 12px}
+  button{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);
+         border-radius:7px;padding:7px 12px;cursor:pointer}
+  button:hover{background:var(--hover)}
+  button.fill{background:var(--fill);color:var(--fillfg);border-color:var(--fill)}
+  button.sm{padding:4px 9px;font-size:.82rem}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .between{justify-content:space-between}
+  .muted{color:var(--sub);font-size:.82rem}
+  /* connection */
+  #dot{width:8px;height:8px;border-radius:50%;background:var(--sub);display:inline-block}
+  #dot.on{background:#16a34a}
+  /* library list */
+  ul.lib{list-style:none;margin:0;padding:0}
+  ul.lib li{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+  ul.lib li:first-child{border-top:0}
+  ul.lib li.sel{font-weight:600}
+  ul.lib .name{flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .swatch{display:inline-flex;gap:2px}
+  .swatch i{width:12px;height:12px;border-radius:2px;display:block;border:1px solid rgba(128,128,128,.3)}
+  /* fields */
+  label{display:block;font-size:.78rem;color:var(--sub);margin:12px 0 4px}
+  input[type=text],select{width:100%;font:inherit;color:var(--fg);background:var(--bg);
+       border:1px solid var(--line);border-radius:7px;padding:8px}
+  input[type=range]{width:100%}
+  .val{font-variant-numeric:tabular-nums;color:var(--sub);font-size:.8rem}
+  .chan{border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:10px}
+  .chan.off{opacity:.5}
+  .chan h3{margin:0;font-size:.9rem;font-weight:600}
+  .pal{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}
+  .pal .c{position:relative}
+  .pal input[type=color]{width:34px;height:34px;padding:0;border:1px solid var(--line);
+       border-radius:6px;background:none;cursor:pointer}
+  .pal .x{position:absolute;top:-6px;right:-6px;width:16px;height:16px;line-height:14px;
+       text-align:center;border-radius:50%;background:var(--fill);color:var(--fillfg);
+       border:none;font-size:11px;cursor:pointer;padding:0}
+  .hide{display:none!important}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .note{font-size:.78rem;color:var(--sub);margin-top:10px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🩷 NuiLED コントローラ</h1>
-  <div class="sub">ホロフレ展示ケース（桃鈴ねね ソロライブ仕様）</div>
+  <header><h1>NuiLED</h1><span class="v">controller</span></header>
+  <p class="lead">プリセットはオフラインで作成・保存できます。本体への転送は接続時のみ。</p>
 
-  <div class="card">
+  <!-- 接続 -->
+  <section>
+    <div class="row between">
+      <div class="row"><span id="dot"></span><span id="connText" class="muted">未接続</span></div>
+      <div class="row">
+        <button id="btnConnect" class="fill sm">接続</button>
+        <button id="btnDisconnect" class="sm hide">切断</button>
+      </div>
+    </div>
+    <div class="note" id="btEnv"></div>
+  </section>
+
+  <!-- ライブラリ -->
+  <section>
+    <div class="row between"><h2 class="shead" style="margin:0">ライブラリ</h2>
+      <button id="btnNew" class="sm">＋ 新規</button></div>
+    <ul class="lib" id="libList"></ul>
+  </section>
+
+  <!-- 編集 -->
+  <section id="editor">
+    <h2 class="shead">編集</h2>
+    <label>名前</label>
+    <input type="text" id="pName" placeholder="プリセット名">
+    <div class="row" style="margin-top:12px">
+      <label style="margin:0"><input type="checkbox" id="enFront"> Front（照明）</label>
+      <label style="margin:0;margin-left:16px"><input type="checkbox" id="enBack"> Back（背景）</label>
+    </div>
+    <div id="chFront"></div>
+    <div id="chBack"></div>
+    <div class="row" style="margin-top:14px">
+      <button id="btnDup" class="sm">複製</button>
+      <button id="btnDel" class="sm" style="color:var(--danger)">削除</button>
+    </div>
+  </section>
+
+  <!-- 本体 -->
+  <section id="device" style="opacity:.5">
+    <h2 class="shead">本体（接続時）</h2>
     <div class="row">
-      <button id="btnConnect" class="primary">接続</button>
-      <span id="status" class="disconnected">未接続</span>
+      <button id="btnPower" class="sm" disabled>電源</button>
+      <span class="muted">明るさ</span>
+      <button class="bri sm" data-i="0" disabled>30</button>
+      <button class="bri sm" data-i="1" disabled>50</button>
+      <button class="bri sm" data-i="2" disabled>70</button>
+      <button class="bri sm" data-i="3" disabled>100</button>
     </div>
-    <div class="hint">Android Chrome / PC Chrome・Edge で動作（iOSはBluefy等が必要）。</div>
-  </div>
-
-  <div id="panel" class="disabled">
-    <!-- 全体操作 -->
-    <div class="card">
-      <h2>全体</h2>
-      <div class="row">
-        <button id="btnPower">電源 ON/OFF</button>
-        <span class="sub">明るさ:</span>
-        <button class="bri" data-i="0">30%</button>
-        <button class="bri" data-i="1">50%</button>
-        <button class="bri" data-i="2">70%</button>
-        <button class="bri" data-i="3">100%</button>
-      </div>
-      <div class="row" style="margin-top:10px">
-        <span class="sub">チャンネル:</span>
-        <button class="ch" data-m="3">両方</button>
-        <button class="ch" data-m="1">Frontのみ</button>
-        <button class="ch" data-m="2">Backのみ</button>
-      </div>
+    <div class="row" style="margin-top:8px">
+      <span class="muted">出力</span>
+      <button class="ch sm" data-m="3" disabled>両方</button>
+      <button class="ch sm" data-m="1" disabled>Front</button>
+      <button class="ch sm" data-m="2" disabled>Back</button>
     </div>
-
-    <!-- スロット選択 -->
-    <div class="card">
-      <h2>プリセット スロット</h2>
-      <div class="grid8" id="slots"></div>
-      <div class="hint">タップで読込→編集。「適用」で点灯に反映、「全保存」で本体へ永続化。</div>
+    <label>転送先スロット</label>
+    <div class="grid2">
+      <select id="devSlot" disabled></select>
+      <button id="btnImport" class="sm" disabled>このスロットを取込</button>
     </div>
-
-    <!-- プリセット編集 -->
-    <div class="card">
-      <h2>編集（スロット <span id="editSlot">-</span>）</h2>
-      <label>演出</label>
-      <select id="effect">
-        <option value="0">Solid（点灯）</option>
-        <option value="1">Breath（ブレス）</option>
-        <option value="2">Wave（ウェーブ）</option>
-        <option value="3">Chase（チェイス）</option>
-      </select>
-      <label>速度 <span id="speedVal">128</span></label>
-      <input type="range" id="speed" min="0" max="255" value="128">
-      <div class="colors">
-        <div><label>Front</label><input type="color" id="cFront" value="#ff9141"></div>
-        <div><label>Back A</label><input type="color" id="cBackA" value="#ff285a"></div>
-        <div><label>Back B</label><input type="color" id="cBackB" value="#ff5a00"></div>
-      </div>
-      <div class="checks">
-        <label><input type="checkbox" id="enFront" checked> Front有効</label>
-        <label><input type="checkbox" id="enBack" checked> Back有効</label>
-      </div>
-      <div class="row" style="margin-top:14px">
-        <button id="btnWrite">デバイスへ書込</button>
-        <button id="btnApply" class="primary">このスロットを適用</button>
-      </div>
+    <div class="row" style="margin-top:12px">
+      <button id="btnSend" class="fill sm" disabled>スロットへ書込＋適用</button>
+      <button id="btnSaveNvs" class="sm" disabled>本体に保存(NVS)</button>
     </div>
-
-    <!-- 保存 -->
-    <div class="card">
-      <h2>永続化</h2>
-      <div class="row">
-        <button id="btnSave" class="primary">全スロットを本体保存（NVS）</button>
-        <button id="btnFactory">工場出荷に戻す</button>
-      </div>
-    </div>
-  </div>
+    <div class="note">「書込＋適用」は編集中プリセットを選択スロットへ送って点灯。恒久化は「本体に保存」。</div>
+  </section>
 </div>
 
 <script>
-// ===== GATT定義（ファームと一致）=====
+"use strict";
+const MAX_COLORS = 6;
+const EFFECTS = ["単色","ブレス","交互","ウェーブ","チェイス"]; // index=Effect
+const LS_KEY = "nuiled.library";
 const UUID = {
-  svc:  'a1b20001-5c3d-4e6f-8a90-1234567890ab',
-  state:'a1b20002-5c3d-4e6f-8a90-1234567890ab',
-  slot: 'a1b20003-5c3d-4e6f-8a90-1234567890ab',
-  pdata:'a1b20004-5c3d-4e6f-8a90-1234567890ab',
-  cmd:  'a1b20005-5c3d-4e6f-8a90-1234567890ab',
-};
-const CMD = { APPLY:0x01, SAVE:0x02, FACTORY:0x03, POWER:0x05, BRIGHTNESS:0x06, CHANNEL:0x07 };
-
-let dev, chState, chSlot, chPData, chCmd;
-let numSlots = 8, editSlot = 0, activeSlot = 0;
-
+  svc:'a1b20001-5c3d-4e6f-8a90-1234567890ab', state:'a1b20002-5c3d-4e6f-8a90-1234567890ab',
+  slot:'a1b20003-5c3d-4e6f-8a90-1234567890ab', pdata:'a1b20004-5c3d-4e6f-8a90-1234567890ab',
+  cmd:'a1b20005-5c3d-4e6f-8a90-1234567890ab' };
+const CMD = { APPLY:1, SAVE:2, FACTORY:3, POWER:5, BRIGHTNESS:6, CHANNEL:7 };
 const $ = id => document.getElementById(id);
-const statusEl = $('status');
 
-function setStatus(text, ok) {
-  statusEl.textContent = text;
-  statusEl.className = ok ? 'connected' : 'disconnected';
+// ===== データモデル =====
+const newChan = (effect, colors, o={}) => ({
+  effect, speed:o.speed??96, period:o.period??5, brightness:o.brightness??255, colors:colors.slice()
+});
+const WARM=[255,145,65], PINK=[255,40,90], ORANGE=[255,90,0];
+function newPreset(name){
+  return { name:name||"新規プリセット", enFront:true, enBack:true,
+    front:newChan(0,[WARM]), back:newChan(1,[PINK,ORANGE],{speed:64,brightness:230}) };
 }
 
-async function writeChar(ch, dataArr) {
-  const buf = new Uint8Array(dataArr);
-  if (ch.writeValueWithResponse) await ch.writeValueWithResponse(buf);
-  else await ch.writeValue(buf);
+let lib = load();
+let curIdx = lib.length ? 0 : -1;
+
+function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY))||[]; }catch(e){ return []; } }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(lib)); }
+if(!lib.length){ lib=[newPreset("暖白のみ"), newPreset("暖白＋桃橙ブレス")];
+  lib[0].enBack=false; lib[0].back=newChan(0,[WARM]); save(); curIdx=0; }
+
+// ===== 色ユーティリティ =====
+const toHex = c => '#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');
+const fromHex = h => [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];
+
+// ===== ライブラリ表示 =====
+function renderLib(){
+  const ul=$('libList'); ul.innerHTML='';
+  lib.forEach((p,i)=>{
+    const li=document.createElement('li'); if(i===curIdx) li.className='sel';
+    const sw=document.createElement('span'); sw.className='swatch';
+    p.front.colors.concat(p.back.colors).slice(0,5).forEach(c=>{
+      const b=document.createElement('i'); b.style.background=toHex(c); sw.appendChild(b); });
+    const nm=document.createElement('span'); nm.className='name'; nm.textContent=p.name;
+    nm.onclick=()=>{ curIdx=i; renderAll(); };
+    li.appendChild(sw); li.appendChild(nm); ul.appendChild(li);
+  });
 }
 
-// ===== 接続 =====
-$('btnConnect').onclick = async () => {
-  try {
-    dev = await navigator.bluetooth.requestDevice({
-      filters: [{ services: [UUID.svc] }, { name: 'NuiLED' }],
-      optionalServices: [UUID.svc],
-    });
-    dev.addEventListener('gattserverdisconnected', onDisconnect);
-    const server = await dev.gatt.connect();
-    const svc = await server.getPrimaryService(UUID.svc);
-    chState = await svc.getCharacteristic(UUID.state);
-    chSlot  = await svc.getCharacteristic(UUID.slot);
-    chPData = await svc.getCharacteristic(UUID.pdata);
-    chCmd   = await svc.getCharacteristic(UUID.cmd);
+// ===== チャンネル編集UI =====
+function chanEditor(hostId, chanKey, title){
+  const p=lib[curIdx], ch=p[chanKey], enabled=chanKey==='front'?p.enFront:p.enBack;
+  const host=$(hostId); host.innerHTML='';
+  const box=document.createElement('div'); box.className='chan'+(enabled?'':' off');
+  box.innerHTML=`<h3>${title}</h3>`;
 
+  // 演出
+  const eff=document.createElement('select');
+  EFFECTS.forEach((n,i)=>eff.add(new Option(n,i)));
+  eff.value=ch.effect; eff.onchange=()=>{ ch.effect=+eff.value; save(); chanEditor(hostId,chanKey,title); renderLib(); };
+  box.appendChild(mkField('演出', eff));
+
+  // 明るさ
+  box.appendChild(mkRange('明るさ', ch.brightness, v=>{ ch.brightness=v; save(); }));
+  // 速度（単色以外）
+  if(ch.effect!==0) box.appendChild(mkRange('速度', ch.speed, v=>{ ch.speed=v; save(); }));
+  // 周期（交互のみ）
+  if(ch.effect===2) box.appendChild(mkRange('周期(LED)', ch.period, v=>{ ch.period=v; save(); }, 1, 30));
+
+  // パレット
+  const palLabel=document.createElement('label'); palLabel.textContent = ch.effect===0?'色':'パレット';
+  box.appendChild(palLabel);
+  const pal=document.createElement('div'); pal.className='pal';
+  ch.colors.forEach((c,i)=>{
+    const wrap=document.createElement('span'); wrap.className='c';
+    const inp=document.createElement('input'); inp.type='color'; inp.value=toHex(c);
+    inp.oninput=()=>{ ch.colors[i]=fromHex(inp.value); save(); renderLib(); };
+    wrap.appendChild(inp);
+    if(ch.colors.length>1){ const x=document.createElement('button'); x.className='x'; x.textContent='×';
+      x.onclick=()=>{ ch.colors.splice(i,1); save(); chanEditor(hostId,chanKey,title); renderLib(); }; wrap.appendChild(x); }
+    pal.appendChild(wrap);
+  });
+  if(ch.effect!==0 && ch.colors.length<MAX_COLORS){
+    const add=document.createElement('button'); add.className='sm'; add.textContent='＋色';
+    add.onclick=()=>{ ch.colors.push([255,255,255]); save(); chanEditor(hostId,chanKey,title); renderLib(); };
+    pal.appendChild(add);
+  }
+  box.appendChild(pal);
+  host.appendChild(box);
+}
+function mkField(label,el){ const d=document.createElement('div');
+  const l=document.createElement('label'); l.textContent=label; d.appendChild(l); d.appendChild(el); return d; }
+function mkRange(label,val,cb,min=0,max=255){
+  const d=document.createElement('div');
+  const l=document.createElement('label'); l.textContent=label;
+  const v=document.createElement('span'); v.className='val'; v.textContent=' '+val; l.appendChild(v);
+  const r=document.createElement('input'); r.type='range'; r.min=min; r.max=max; r.value=val;
+  r.oninput=()=>{ v.textContent=' '+r.value; cb(+r.value); };
+  d.appendChild(l); d.appendChild(r); return d;
+}
+
+function renderEditor(){
+  if(curIdx<0){ $('editor').classList.add('hide'); return; }
+  $('editor').classList.remove('hide');
+  const p=lib[curIdx];
+  $('pName').value=p.name;
+  $('enFront').checked=p.enFront; $('enBack').checked=p.enBack;
+  chanEditor('chFront','front','Front（照明）');
+  chanEditor('chBack','back','Back（背景）');
+}
+$('pName').oninput=()=>{ lib[curIdx].name=$('pName').value; save(); renderLib(); };
+$('enFront').onchange=()=>{ lib[curIdx].enFront=$('enFront').checked; save(); renderEditor(); };
+$('enBack').onchange =()=>{ lib[curIdx].enBack =$('enBack').checked; save(); renderEditor(); };
+$('btnNew').onclick=()=>{ lib.push(newPreset()); curIdx=lib.length-1; save(); renderAll(); };
+$('btnDup').onclick=()=>{ const c=JSON.parse(JSON.stringify(lib[curIdx])); c.name+=" 複製";
+  lib.splice(curIdx+1,0,c); curIdx++; save(); renderAll(); };
+$('btnDel').onclick=()=>{ if(!confirm('このプリセットを削除しますか？'))return;
+  lib.splice(curIdx,1); curIdx=Math.min(curIdx,lib.length-1); save(); renderAll(); };
+
+function renderAll(){ renderLib(); renderEditor(); }
+
+// ===== シリアライズ（ファームの47byteに一致）=====
+function encodeChan(ch){
+  const a=new Uint8Array(23);
+  a[0]=ch.effect; a[1]=ch.speed; a[2]=ch.period; a[3]=ch.brightness; a[4]=ch.colors.length;
+  ch.colors.forEach((c,i)=>{ a[5+i*3]=c[0]; a[5+i*3+1]=c[1]; a[5+i*3+2]=c[2]; });
+  return a;
+}
+function encodePreset(p){
+  const b=new Uint8Array(47);
+  b.set(encodeChan(p.front),0); b.set(encodeChan(p.back),23);
+  b[46]=(p.enFront?1:0)|(p.enBack?2:0);
+  return b;
+}
+function decodeChan(dv,off){
+  const nc=dv.getUint8(off+4), colors=[];
+  for(let i=0;i<nc;i++) colors.push([dv.getUint8(off+5+i*3),dv.getUint8(off+6+i*3),dv.getUint8(off+7+i*3)]);
+  return { effect:dv.getUint8(off),speed:dv.getUint8(off+1),period:dv.getUint8(off+2),
+           brightness:dv.getUint8(off+3),colors:colors.length?colors:[[255,255,255]] };
+}
+
+// ===== BLE =====
+let dev,chState,chSlot,chPData,chCmd;
+const connected = ()=>!!(dev&&dev.gatt&&dev.gatt.connected);
+async function wc(ch,arr){ const b=new Uint8Array(arr);
+  if(ch.writeValueWithResponse) await ch.writeValueWithResponse(b); else await ch.writeValue(b); }
+
+$('btnConnect').onclick=async()=>{
+  try{
+    dev=await navigator.bluetooth.requestDevice({filters:[{services:[UUID.svc]},{name:'NuiLED'}],optionalServices:[UUID.svc]});
+    dev.addEventListener('gattserverdisconnected',onDisc);
+    const s=await dev.gatt.connect(); const svc=await s.getPrimaryService(UUID.svc);
+    chState=await svc.getCharacteristic(UUID.state); chSlot=await svc.getCharacteristic(UUID.slot);
+    chPData=await svc.getCharacteristic(UUID.pdata); chCmd=await svc.getCharacteristic(UUID.cmd);
     await chState.startNotifications();
-    chState.addEventListener('characteristicvaluechanged', e => parseState(e.target.value));
+    chState.addEventListener('characteristicvaluechanged',e=>parseState(e.target.value));
     parseState(await chState.readValue());
-
-    buildSlots();
-    await loadSlot(activeSlot);
-    $('panel').classList.remove('disabled');
-    setStatus('接続済み', true);
-  } catch (err) {
-    setStatus('接続失敗: ' + err.message, false);
-  }
+    setConn(true);
+  }catch(e){ $('connText').textContent='接続失敗: '+e.message; }
 };
+$('btnDisconnect').onclick=()=>{ if(dev&&dev.gatt.connected) dev.gatt.disconnect(); };
+function onDisc(){ setConn(false); }
 
-function onDisconnect() {
-  setStatus('切断', false);
-  $('panel').classList.add('disabled');
+function setConn(on){
+  $('dot').className=on?'on':''; $('connText').textContent=on?'接続済み':'未接続';
+  $('btnConnect').classList.toggle('hide',on); $('btnDisconnect').classList.toggle('hide',!on);
+  $('device').style.opacity=on?'1':'.5';
+  document.querySelectorAll('#device button,#device select').forEach(b=>b.disabled=!on);
+  if(on){ const sel=$('devSlot'); if(!sel.options.length)
+    for(let i=0;i<8;i++) sel.add(new Option('スロット '+i,i)); }
+}
+function parseState(dv){
+  const power=dv.getUint8(0), active=dv.getUint8(2);
+  $('btnPower').textContent = power?'電源 OFF':'電源 ON';
+  $('devSlot').value = active;
 }
 
-// ===== State =====
-function parseState(dv) {
-  const powerOn = dv.getUint8(0);
-  const briIdx  = dv.getUint8(1);
-  activeSlot    = dv.getUint8(2);
-  const chMask  = dv.getUint8(3);
-  numSlots      = dv.getUint8(4) || 8;
-  // ハイライト更新
-  document.querySelectorAll('.slot').forEach(b =>
-    b.classList.toggle('active', Number(b.dataset.s) === activeSlot));
-  $('btnPower').textContent = powerOn ? '電源 OFF' : '電源 ON';
-}
+// device controls
+$('btnPower').onclick=()=>wc(chCmd,[CMD.POWER, $('btnPower').textContent.includes('ON')?1:0]);
+document.querySelectorAll('.bri').forEach(b=>b.onclick=()=>wc(chCmd,[CMD.BRIGHTNESS,+b.dataset.i]));
+document.querySelectorAll('.ch').forEach(b=>b.onclick=()=>wc(chCmd,[CMD.CHANNEL,+b.dataset.m]));
+$('btnSend').onclick=async()=>{ const slot=+$('devSlot').value;
+  await wc(chSlot,[slot]); await wc(chPData, Array.from(encodePreset(lib[curIdx]))); await wc(chCmd,[CMD.APPLY,slot]); };
+$('btnSaveNvs').onclick=()=>wc(chCmd,[CMD.SAVE]);
+$('btnImport').onclick=async()=>{ const slot=+$('devSlot').value;
+  await wc(chSlot,[slot]); const dv=await chPData.readValue();
+  const p={ name:'スロット'+slot+'取込', front:decodeChan(dv,0), back:decodeChan(dv,23),
+    enFront:!!(dv.getUint8(46)&1), enBack:!!(dv.getUint8(46)&2) };
+  lib.push(p); curIdx=lib.length-1; save(); renderAll(); };
 
-// ===== スロット =====
-function buildSlots() {
-  const box = $('slots'); box.innerHTML = '';
-  for (let i = 0; i < numSlots; i++) {
-    const b = document.createElement('button');
-    b.className = 'slot' + (i === activeSlot ? ' active' : '');
-    b.textContent = i; b.dataset.s = i;
-    b.onclick = () => loadSlot(i);
-    box.appendChild(b);
-  }
-}
-
-async function loadSlot(i) {
-  editSlot = i;
-  $('editSlot').textContent = i;
-  await writeChar(chSlot, [i]);          // 編集対象を選択
-  const dv = await chPData.readValue();  // Preset(12byte)読込
-  fillEditor(dv);
-}
-
-function fillEditor(dv) {
-  $('effect').value = dv.getUint8(0);
-  $('speed').value = dv.getUint8(1);  $('speedVal').textContent = dv.getUint8(1);
-  $('cFront').value = rgbHex(dv, 2);
-  $('cBackA').value = rgbHex(dv, 5);
-  $('cBackB').value = rgbHex(dv, 8);
-  const flags = dv.getUint8(11);
-  $('enFront').checked = !!(flags & 1);
-  $('enBack').checked  = !!(flags & 2);
-}
-
-function rgbHex(dv, o) {
-  const h = n => n.toString(16).padStart(2, '0');
-  return '#' + h(dv.getUint8(o)) + h(dv.getUint8(o+1)) + h(dv.getUint8(o+2));
-}
-function hexRgb(hex) {
-  return [parseInt(hex.substr(1,2),16), parseInt(hex.substr(3,2),16), parseInt(hex.substr(5,2),16)];
-}
-
-function editorToBytes() {
-  const f = hexRgb($('cFront').value);
-  const a = hexRgb($('cBackA').value);
-  const b = hexRgb($('cBackB').value);
-  const flags = ($('enFront').checked ? 1 : 0) | ($('enBack').checked ? 2 : 0);
-  return [Number($('effect').value), Number($('speed').value),
-          f[0],f[1],f[2], a[0],a[1],a[2], b[0],b[1],b[2], flags];
-}
-
-$('speed').oninput = () => $('speedVal').textContent = $('speed').value;
-
-// ===== 操作 =====
-$('btnWrite').onclick   = async () => { await writeChar(chSlot,[editSlot]);
-                                        await writeChar(chPData, editorToBytes()); };
-$('btnApply').onclick   = async () => { await writeChar(chSlot,[editSlot]);
-                                        await writeChar(chPData, editorToBytes());
-                                        await writeChar(chCmd,[CMD.APPLY, editSlot]); };
-$('btnSave').onclick    = () => writeChar(chCmd,[CMD.SAVE]);
-$('btnFactory').onclick = async () => { if(confirm('全スロットを工場出荷に戻します。よろしいですか？'))
-                                        { await writeChar(chCmd,[CMD.FACTORY]); await loadSlot(editSlot); } };
-$('btnPower').onclick   = () => { const on = $('btnPower').textContent.includes('ON');
-                                  writeChar(chCmd,[CMD.POWER, on?1:0]); };
-document.querySelectorAll('.bri').forEach(b =>
-  b.onclick = () => writeChar(chCmd,[CMD.BRIGHTNESS, Number(b.dataset.i)]));
-document.querySelectorAll('.ch').forEach(b =>
-  b.onclick = () => writeChar(chCmd,[CMD.CHANNEL, Number(b.dataset.m)]));
-
-if (!navigator.bluetooth) {
-  setStatus('このブラウザはWeb Bluetooth非対応', false);
-  $('btnConnect').disabled = true;
-}
+// init
+if(!navigator.bluetooth){ $('btnConnect').disabled=true;
+  $('btEnv').textContent='このブラウザはWeb Bluetooth非対応（Android Chrome / PC Chrome・Edge推奨）。'; }
+renderAll();
 </script>
 </body>
 </html>

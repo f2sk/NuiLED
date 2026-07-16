@@ -269,19 +269,30 @@ Service UUID: `a1b20001-5c3d-4e6f-8a90-1234567890ab`
 |---|---|---|---|
 | State | ...0002 | R/Notify | `[powerOn, brightnessIdx, activeSlot, channelMask, numSlots]`（5byte）。状態変化でNotify |
 | SlotSelect | ...0003 | R/W | 編集対象スロット番号（0..7） |
-| PresetData | ...0004 | R/W | 選択スロットの Preset(12byte) を読み書き |
+| PresetData | ...0004 | R/W | 選択スロットの Preset(47byte) を読み書き |
 | Command | ...0005 | W | オペコード（下記） |
 | Realtime | ...0006 | W(no-rsp) | **②用に予約**（現状スタブ） |
 
-Preset(12byte): `effect, speed, frontRGB, backA_RGB, backB_RGB, flags`
+Preset(47byte) = Front + Back の2チャンネル＋flags。各チャンネルは共通の演出エンジン：
+
+- **ChannelPreset(23byte)**: `effect, speed, period, brightness, numColors, palette[RGB×6]`
+- **Preset**: `front(23) + back(23) + flags(1)`（flags bit0=Front有効, bit1=Back有効）
+- **Effect**: 0=単色 / 1=ブレス / 2=交互(周期＝ブロック長) / 3=ウェーブ / 4=チェイス
+- **明るさ**: チャンネル毎の brightness × グローバルマスタ（SW1/BLE）
+- パレット最大6色（`MAX_COLORS`、可変）
 
 Commandオペコード: `0x01`=APPLY(スロット適用) / `0x02`=SAVE(全スロットNVS保存) / `0x03`=FACTORY(工場出荷) / `0x05`=POWER / `0x06`=BRIGHTNESS(idx) / `0x07`=CHANNEL(mask)
 
 ①の操作フロー：接続 → SlotSelect書込 → PresetData読/書 → Command 0x02(SAVE) → 切断
 
-## Web UI（今後）
+## Web UI
 
-Chrome Web Bluetooth API を利用（専用アプリなし）。上記GATTに対し、プリセット編集・転送・保存・状態表示を行うHTMLを別途作成。
+Chrome Web Bluetooth API を利用（専用アプリなし）。GitHub Pagesで配信（`docs/`）。
+
+- **オフライン優先**：プリセットはブラウザの localStorage にライブラリとして保持。**未接続でも作成・編集・保存が可能**
+- **型ベース編集**：Front/Back 各チャンネルで 演出（単色/ブレス/交互/ウェーブ/チェイス）・明るさ・速度・周期・パレット（フルRGB、最大6色）を編集
+- **転送**：接続時のみ、編集中プリセットを本体スロットへ書込＋適用、NVS保存、本体スロットの取込が可能
+- 無装飾のニュートラルなデザイン
 
 ---
 
