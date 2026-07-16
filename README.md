@@ -48,6 +48,7 @@ Android Chrome / PC Chrome・Edge で開き、「接続」から本体（`NuiLED
 - レベル変換: TC74AC125P（VCCシフトで3.3→5V成立）
 - 母線スイッチ: Pch MOSFET（ゲートRCソフトスタート）＋ 2N7000ゲート駆動
 - 電源: USB-C 5V/3A、FastLEDで2.5A電流クランプ
+- 実装: 両面ユニバーサル基板 Cタイプ(72×47mm)、LED接続はJST XH 3P横出し(S3B-XH-A)×2
 
 詳細・BOM（秋月電子）・成立性確認は設計仕様書を参照。
 

@@ -519,7 +519,11 @@ LEDとチップRCは手元品を流用するため購入リストから除外（
 | C2 | 電解コン 1000µF | [検索](https://akizukidenshi.com/catalog/goods/search.aspx?keyword=1000uF) | 数十円 | 母線バルク（手持ちに大容量無ければ） |
 | C3,C4 | 電解コン 470µF ×2 | [検索](https://akizukidenshi.com/catalog/goods/search.aspx?keyword=470uF) | 数十円 | テープ手前バルク |
 | SW1,SW2 | タクトスイッチ ×2 | [検索](https://akizukidenshi.com/catalog/goods/search.aspx?keyword=%E3%82%BF%E3%82%AF%E3%83%88%E3%82%B9%E3%82%A4%E3%83%83%E3%83%81) | 数十円 | 好みの品 |
-| — | ユニバーサル基板・ピンヘッダ・線材 | [検索](https://akizukidenshi.com/catalog/goods/search.aspx?keyword=%E3%83%A6%E3%83%8B%E3%83%90%E3%83%BC%E3%82%B5%E3%83%AB%E5%9F%BA%E6%9D%BF) | 適宜 | 手ハンダ用 |
+| — | 両面ユニバーサル基板 Cタイプ 72×47mm | [103231](https://akizukidenshi.com/catalog/g/g103231/) | 要確認 | 両面スルーホール・めっき仕上げ |
+| J1,J2 | JST XH 3P 横出しベース S3B-XH-A | [112263](https://akizukidenshi.com/catalog/g/g112263/) | ¥15 | Front/Back LED接続 ×2（3A定格） |
+| — | JST XH 3P ハウジング XHP-3 | [112256](https://akizukidenshi.com/catalog/g/g112256/) | ¥5 | ×2（テープ側） |
+| — | XHコンタクト SXH-001T-P0.6（10個） | [112264](https://akizukidenshi.com/catalog/g/g112264/) | ¥30 | 圧着（自前）。AWG28-22対応 |
+| — | ピンヘッダ・スズメッキ線 | [検索](https://akizukidenshi.com/catalog/goods/search.aspx?keyword=%E3%83%94%E3%83%B3%E3%83%98%E3%83%83%E3%83%80) | 適宜 | XIAO実装・5V/GND母線 |
 
 **手元流用（購入不要）**
 | 記号 | 部品 | 定数 | 備考 |
@@ -546,7 +550,8 @@ LEDとチップRCは手元品を流用するため購入リストから除外（
 - したがって律速は「IC電流制限」ではなく**機械・熱**：USB-Cレセプタクル（USB-C規格3A）／基板内VBUSパターン（短距離）／ヘッダ・ソケット接点。公式に最大電流値が無いのは直列の電流制限素子が無いため。
 
 ### 実装（ガラエポ基板・確定方針）
-- ガラエポ（FR-4）ユニバーサル基板をベースに、**XIAOはピンヘッダで直ハンダ固定**（着脱ソケットにしない＝接点ホットスポットを作らない）。
+- ベースは**両面スルーホール Cタイプ（72×47mm）**。**XIAOはピンヘッダで直ハンダ固定**（着脱ソケットにしない＝接点ホットスポットを作らない）。両面なのでGND母線・ジャンパが楽。
+- **LEDテープ接続はJST XH 3P 横出し（S3B-XH-A）×2**（Front/Back）。裸線ピッグテールはXHコンタクト圧着でハウジング化。横出しでケーブルが上方向に飛ばず薄型ケースに収まる。**5V/GND逆接はWS2812B即死**なのでシルク/ラベルで極性明記、接続はテープのDin側端へ。XIAOのUSB-Cは基板の別辺に出して給電・書き込みを確保。
 - LED母線の5V/GNDは**XIAOの5V/GNDパッド（ヘッダ足）から直ハンダで引き出し、スズメッキ線で取り回す**。φ0.6mm以上なら数A余裕。
 - 注意：LED電流2.5Aは**5Vピン1本・GNDピン1本**（XIAOは各1ピンのみ）を通る。2.54mmヘッダピン定格≈3A/ピンで範囲内だが最細部。ハンダはたっぷり盛り、5V/GNDは太短く、GNDはスター的に戻す。
 - 内部VBUSパターンのみ手を入れられないが、短距離＋2.5Aクランプ＋断続運用で許容。完全に消すなら将来パスBでUSB-Cコネクタ基板直付け（その場合CC1/CC2に5.1kプルダウン要）。
