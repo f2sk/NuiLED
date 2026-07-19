@@ -476,47 +476,69 @@ USB-C(5V/3A)─┬─→ XIAO 5V pin ──┐   ← 入口はXIAO一本（2.5A�
 
 **同じネットに並ぶピンは全て接続する**（＝足同士を繋ぐ対応表）。
 
-部品ピン参照：
-- **XIAO ESP32-S3**（シルク印字ラベル）: D0=Front Data / D1=Back Data / D2=母線EN / D3=SW1 / D4=SW2 / 5V=非スイッチ5V / GND=共通 / 3V3=未使用
+**ノード呼称**
+- **Vusb**：USB由来の非スイッチ5V（＝XIAO 5Vピン＝Smtp）
+- **Vmtp**：MTP4835のDから出るスイッチ後母線（＝Dmtp）
+- **Vac**：AC125のVCC（≈4.4V、1N4148の後）
+- **Gmtp**：MTP4835ゲートノード（旧PGATE）
+
+**部品ピン参照**
+- **XIAO ESP32-S3**（シルク印字ラベル）: D0=Front Data / D1=Back Data / D2=母線EN / D3=SW1 / D4=SW2 / 5V=Vusb / GND=共通 / 3V3=未使用
+- **MTP4835I3(TO-251)**: **Gmtp** / **Dmtp**(=タブ=Vmtp) / **Smtp**(=Vusb) ※脚順はデータシートで要確認
+- **2N7000(TO-92, 平面手前・脚下 左→右 1-2-3)**: 1=**S2n** 2=**G2n** 3=**D2n**
 - **TC74AC125P(DIP-14)**: 1=1OE 2=1A 3=1Y 4=2OE 5=2A 6=2Y 7=GND 8=3Y 9=3A 10=3OE 11=4Y 12=4A 13=4OE 14=VCC
-- **MTP4835I3(TO-251)**: G / D(=タブ) / S ※脚順はデータシートで要確認
-- **2N7000(TO-92, 平面手前・脚下 左→右)**: 1=S 2=G 3=D
 - **1N4148**: A(アノード) / K(カソード=帯側)
 
-| ネット | 接続するピン（部品:ピン:機能） |
+**受動部品（両端の接続先）**
+| 部品 | 値 | 一端 | 他端 |
+|---|---|---|---|
+| R1 | 10k | Vusb | Gmtp |
+| R2 | 1k | Gmtp | D2n |
+| R3 | 330Ω | AC125:3(1Y) | Front Din |
+| R4 | 330Ω | AC125:6(2Y) | Back Din |
+| C1 | 2.2〜10µF | Gmtp | Vusb |
+| C2 | 1000µF(＋) | Vmtp | GND(−) |
+| C3 | 470µF(＋) | Vmtp(Front給電点) | GND(−) |
+| C4 | 470µF(＋) | Vmtp(Back給電点) | GND(−) |
+| C5 | 100nF | Vac | GND |
+
+**ネット別メンバー**
+| ネット | 接続するピン |
 |---|---|
-| GND（共通） | XIAO:GND / 2N7000:S / AC125:7(GND) / AC125:1(1OE有効) / AC125:4(2OE有効) / AC125:9(3A) / AC125:12(4A) / C2:− / C3:− / C4:− / C5:片側 / SW1:片側 / SW2:片側 / Front XH:GND / Back XH:GND |
-| +5V（非スイッチ/USB直） | XIAO:5V / MTP4835:S / R1:片側 / C1:片側 |
-| SW5V（スイッチ後母線） | MTP4835:D(タブ) / 1N4148:A / C2:+ / C3:+ / C4:+ / Front XH:5V / Back XH:5V |
-| AC125_VCC（≈4.4V） | 1N4148:K / AC125:14(VCC) / AC125:10(3OE無効) / AC125:13(4OE無効) / C5:片側 |
-| PGATE（P-MOSゲート） | MTP4835:G / R1:片側 / C1:片側 / R2:片側 |
-| 2N7000_D | 2N7000:D / R2:片側 |
-| BUS_EN | XIAO:D2 / 2N7000:G |
-| F_MCU | XIAO:D0 / AC125:2(1A) |
-| F_OUT | AC125:3(1Y) / R3:片側 |
-| F_DIN | R3:片側 / Front XH:Data |
-| B_MCU | XIAO:D1 / AC125:5(2A) |
-| B_OUT | AC125:6(2Y) / R4:片側 |
-| B_DIN | R4:片側 / Back XH:Data |
-| SW1_IN | XIAO:D3 / SW1:片側（他端=GND） |
-| SW2_IN | XIAO:D4 / SW2:片側（他端=GND） |
+| **Vusb** | XIAO:5V / Smtp / R1 / C1 |
+| **Vmtp** | Dmtp(タブ) / 1N4148:A / C2:＋ / C3:＋ / C4:＋ / Front XH:5V / Back XH:5V |
+| **Vac** | 1N4148:K / AC125:14(VCC) / AC125:10(3OE無効) / AC125:13(4OE無効) / C5 |
+| **Gmtp** | Gmtp / R1 / C1 / R2 |
+| **D2n** | D2n / R2 |
+| **BUS_EN** | XIAO:D2 / G2n |
+| **F_MCU** | XIAO:D0 / AC125:2(1A) |
+| **F_OUT** | AC125:3(1Y) / R3 |
+| **F_DIN** | R3 / Front XH:Data |
+| **B_MCU** | XIAO:D1 / AC125:5(2A) |
+| **B_OUT** | AC125:6(2Y) / R4 |
+| **B_DIN** | R4 / Back XH:Data |
+| **SW1_IN** | XIAO:D3 / SW1（他端=GND） |
+| **SW2_IN** | XIAO:D4 / SW2（他端=GND） |
+| **GND** | XIAO:GND / S2n / AC125:1(1OE有効) / AC125:4(2OE有効) / AC125:7(GND) / AC125:9(3A) / AC125:12(4A) / C2:− / C3:− / C4:− / C5 / SW1 / SW2 / Front XH:GND / Back XH:GND |
 
 未接続で放置：AC125:8(3Y), 11(4Y)（未使用出力はオープン）。
 
 ゲート駆動まわり：
 ```
- +5V ──[R1 10k]──┬─────────── MTP4835:G  (PGATE)
-      └─[C1 2.2〜10µF]─┘（C1はG-S間＝+5V側）
- PGATE ──[R2 1k]── 2N7000:D
- 2N7000:G ── XIAO:D2(BUS_EN)   2N7000:S ── GND
+ Vusb ──[R1 10k]──── Gmtp        （既定でゲートを5Vへ＝P-MOS OFF）
+ Vusb ──[C1 2.2〜10µF]── Gmtp    （Cgs、ソフトスタート）
+ Gmtp ──[R2 1k]── D2n
+ G2n ── XIAO:D2(BUS_EN)     S2n ── GND
 ```
-D2=Hで2N7000 ON→P-MOSゲートを引き下げ→母線ON。立ち上がりはR2×C1で緩やか＝突入抑制。
+D2=Hで2N7000 ON→Gmtpを引き下げ→母線(Vmtp)ON。立ち上がりはR2×C1で緩やか＝突入抑制。
 
 配線注意：
+- **AC125のOE**：1OE(1)・2OE(4)を**GND**に落として出力有効（74x125はアクティブLow）。未使用側3OE(10)・4OE(13)は**Vac**へ上げて無効
+- **データ直列330Ω**：AC125:3→R3→Front Din、AC125:6→R4→Back Din（直結でなくR3/R4を挟む）
 - **XH極性**：5V/GND逆接でWS2812B即死。DataはテープのDin側へ
-- **大電流ネット（+5V / SW5V / GND）**：2.5Aが流れる。スズメッキ線で太短く、XIAOの5V/GNDは直ハンダ
-- **電解C極性**：C2/C3/C4は+をSW5V・−をGNDへ。C5(100nF)は無極性
-- **MTP4835の脚順**（G/D/S）はデータシートで確認
+- **大電流ネット（Vusb / Vmtp / GND）**：2.5Aが流れる。スズメッキ線で太短く、XIAOの5V/GNDは直ハンダ
+- **電解C極性**：C2/C3/C4は＋をVmtp・−をGNDへ。C5(100nF)は無極性
+- **MTP4835の脚順**（Gmtp/Dmtp/Smtp）はデータシートで確認
 
 ## 14.6 電流収支（120球）
 
