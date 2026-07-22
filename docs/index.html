@@ -17,10 +17,9 @@
   body{margin:0;background:var(--bg);color:var(--fg);
        font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5}
   .wrap{max-width:640px;margin:0 auto;padding:20px 16px 60px}
-  header{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  header{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
   header h1{font-size:1.15rem;font-weight:600;letter-spacing:.02em;margin:0}
   header .v{font-size:.75rem;color:var(--sub)}
-  .lead{color:var(--sub);font-size:.85rem;margin:0 0 18px}
   section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
   .shead{font-size:.72rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
          color:var(--sub);margin:0 0 12px}
@@ -33,17 +32,33 @@
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .between{justify-content:space-between}
   .muted{color:var(--sub);font-size:.82rem}
-  /* connection */
   #dot{width:8px;height:8px;border-radius:50%;background:var(--sub);display:inline-block}
   #dot.on{background:#16a34a}
-  /* library list */
+  /* tabs */
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:4px}
+  .tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;
+       padding:8px 14px;color:var(--sub);font-weight:600}
+  .tabs button.act{color:var(--fg);border-bottom-color:var(--fill)}
+  .tabpage{display:none} .tabpage.act{display:block}
+  /* slot list */
+  .slots{display:flex;flex-direction:column;gap:8px}
+  .slotcard{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+       padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+  .slotcard:hover{background:var(--hover)}
+  .slotcard.active{border-color:var(--fill);box-shadow:inset 0 0 0 1px var(--fill)}
+  .slotcard .no{font-weight:600;font-variant-numeric:tabular-nums;width:1.4em;text-align:center}
+  .slotcard .info{flex:1;min-width:0}
+  .slotcard .cline{display:flex;align-items:center;gap:6px;font-size:.85rem}
+  .slotcard .tag{color:var(--sub);width:1.1em}
+  .badge{font-size:.68rem;color:var(--fillfg);background:var(--fill);border-radius:4px;padding:1px 6px}
+  .swatch{display:inline-flex;gap:2px}
+  .swatch i{width:12px;height:12px;border-radius:2px;display:block;border:1px solid rgba(128,128,128,.3)}
+  /* library */
   ul.lib{list-style:none;margin:0;padding:0}
   ul.lib li{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
   ul.lib li:first-child{border-top:0}
   ul.lib li.sel{font-weight:600}
   ul.lib .name{flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .swatch{display:inline-flex;gap:2px}
-  .swatch i{width:12px;height:12px;border-radius:2px;display:block;border:1px solid rgba(128,128,128,.3)}
   /* fields */
   label{display:block;font-size:.78rem;color:var(--sub);margin:12px 0 4px}
   input[type=text],select{width:100%;font:inherit;color:var(--fg);background:var(--bg);
@@ -51,7 +66,6 @@
   input[type=range]{width:100%}
   .val{font-variant-numeric:tabular-nums;color:var(--sub);font-size:.8rem}
   .chan{border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:10px}
-  .chan.off{opacity:.5}
   .chan h3{margin:0;font-size:.9rem;font-weight:600}
   .pal{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}
   .pal .c{position:relative}
@@ -60,19 +74,19 @@
   .pal .x{position:absolute;top:-6px;right:-6px;width:16px;height:16px;line-height:14px;
        text-align:center;border-radius:50%;background:var(--fill);color:var(--fillfg);
        border:none;font-size:11px;cursor:pointer;padding:0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .note{font-size:.78rem;color:var(--sub);margin-top:10px}
   .hide{display:none!important}
   canvas.preview{width:100%;height:22px;display:block;margin-top:4px;border-radius:5px;
        background:#000;border:1px solid var(--line)}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .note{font-size:.78rem;color:var(--sub);margin-top:10px}
+  .offline{pointer-events:none;opacity:.45}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header><h1>NuiLED</h1><span class="v">controller</span></header>
-  <p class="lead">プリセットはオフラインで作成・保存できます。本体への転送は接続時のみ。</p>
 
-  <!-- 接続 -->
+  <!-- 接続（共通） -->
   <section>
     <div class="row between">
       <div class="row"><span id="dot"></span><span id="connText" class="muted">未接続</span></div>
@@ -84,64 +98,87 @@
     <div class="note" id="btEnv"></div>
   </section>
 
-  <!-- ライブラリ -->
-  <section>
-    <div class="row between"><h2 class="shead" style="margin:0">ライブラリ</h2>
-      <button id="btnNew" class="sm">＋ 新規</button></div>
-    <ul class="lib" id="libList"></ul>
-  </section>
+  <!-- タブ -->
+  <div class="tabs">
+    <button id="tabBtnOp" class="act">操作パネル</button>
+    <button id="tabBtnCr">プリセット作成</button>
+  </div>
 
-  <!-- 編集 -->
-  <section id="editor">
-    <h2 class="shead">編集</h2>
-    <label>名前</label>
-    <input type="text" id="pName" placeholder="プリセット名">
-    <div class="row" style="margin-top:12px">
-      <label style="margin:0"><input type="checkbox" id="enFront"> Front（照明）</label>
-      <label style="margin:0;margin-left:16px"><input type="checkbox" id="enBack"> Back（背景）</label>
-    </div>
-    <div id="chFront"></div>
-    <div id="chBack"></div>
-    <div class="row" style="margin-top:14px">
-      <button id="btnDup" class="sm">複製</button>
-      <button id="btnDel" class="sm" style="color:var(--danger)">削除</button>
-    </div>
-  </section>
+  <!-- ===== 操作パネル ===== -->
+  <div id="pageOp" class="tabpage act">
+    <section id="opGlobal" class="offline">
+      <h2 class="shead">全体</h2>
+      <div class="row">
+        <button id="btnPower" class="sm">電源</button>
+        <span class="muted">明るさ</span>
+        <button class="bri sm" data-i="0">30</button>
+        <button class="bri sm" data-i="1">50</button>
+        <button class="bri sm" data-i="2">70</button>
+        <button class="bri sm" data-i="3">100</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <span class="muted">出力</span>
+        <button class="ch sm" data-m="3">両方</button>
+        <button class="ch sm" data-m="1">Front</button>
+        <button class="ch sm" data-m="2">Back</button>
+      </div>
+    </section>
 
-  <!-- 本体 -->
-  <section id="device" style="opacity:.5">
-    <h2 class="shead">本体（接続時）</h2>
-    <div class="row">
-      <button id="btnPower" class="sm" disabled>電源</button>
-      <span class="muted">明るさ</span>
-      <button class="bri sm" data-i="0" disabled>30</button>
-      <button class="bri sm" data-i="1" disabled>50</button>
-      <button class="bri sm" data-i="2" disabled>70</button>
-      <button class="bri sm" data-i="3" disabled>100</button>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <span class="muted">出力</span>
-      <button class="ch sm" data-m="3" disabled>両方</button>
-      <button class="ch sm" data-m="1" disabled>Front</button>
-      <button class="ch sm" data-m="2" disabled>Back</button>
-    </div>
-    <label>転送先スロット</label>
-    <div class="grid2">
-      <select id="devSlot" disabled></select>
-      <button id="btnImport" class="sm" disabled>このスロットを取込</button>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <button id="btnSend" class="fill sm" disabled>スロットへ書込＋適用</button>
-      <button id="btnSaveNvs" class="sm" disabled>本体に保存(NVS)</button>
-    </div>
-    <div class="note">「書込＋適用」は編集中プリセットを選択スロットへ送って点灯。恒久化は「本体に保存」。</div>
-  </section>
+    <section id="opSlots" class="offline">
+      <div class="row between"><h2 class="shead" style="margin:0">本体モード（スロット）</h2>
+        <button id="btnSync" class="sm">↻ 同期</button></div>
+      <div class="slots" id="slotList"></div>
+      <div class="note">タップで本体に適用＝その場で点灯。本体ボタンSW2でも順送りできる。</div>
+    </section>
+
+    <section id="opHint" class="note">接続すると本体の8モードが一覧表示されます。</section>
+  </div>
+
+  <!-- ===== プリセット作成 ===== -->
+  <div id="pageCr" class="tabpage">
+    <section>
+      <div class="row between"><h2 class="shead" style="margin:0">ライブラリ（この端末に保存）</h2>
+        <button id="btnNew" class="sm">＋ 新規</button></div>
+      <ul class="lib" id="libList"></ul>
+      <div class="note">未接続でも作成・編集・保存できます。</div>
+    </section>
+
+    <section id="editor">
+      <h2 class="shead">編集</h2>
+      <label>名前</label>
+      <input type="text" id="pName" placeholder="プリセット名">
+      <div class="row" style="margin-top:12px">
+        <label style="margin:0"><input type="checkbox" id="enFront"> Front（照明）</label>
+        <label style="margin:0;margin-left:16px"><input type="checkbox" id="enBack"> Back（背景）</label>
+      </div>
+      <div id="chFront"></div>
+      <div id="chBack"></div>
+      <div class="row" style="margin-top:14px">
+        <button id="btnDup" class="sm">複製</button>
+        <button id="btnDel" class="sm" style="color:var(--danger)">削除</button>
+      </div>
+    </section>
+
+    <section id="crXfer" class="offline">
+      <h2 class="shead">本体へ転送（接続時）</h2>
+      <div class="grid2">
+        <select id="devSlot"></select>
+        <button id="btnImport" class="sm">このスロットを取込</button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button id="btnSend" class="fill sm">スロットへ書込＋適用</button>
+        <button id="btnSaveNvs" class="sm">本体に保存(NVS)</button>
+        <button id="btnFactory" class="sm">工場出荷</button>
+      </div>
+      <div class="note">「書込＋適用」で選択スロットへ送って点灯。恒久化は「本体に保存」。</div>
+    </section>
+  </div>
 </div>
 
 <script>
 "use strict";
 const MAX_COLORS = 6;
-const EFFECTS = ["単色","ブレス","交互","ウェーブ","チェイス"]; // index=Effect
+const EFFECTS = ["単色","ブレス","交互","ウェーブ","チェイス"];
 const LS_KEY = "nuiled.library";
 const UUID = {
   svc:'a1b20001-5c3d-4e6f-8a90-1234567890ab', state:'a1b20002-5c3d-4e6f-8a90-1234567890ab',
@@ -152,145 +189,47 @@ const $ = id => document.getElementById(id);
 
 // ===== データモデル =====
 const newChan = (effect, colors, o={}) => ({
-  effect, speed:o.speed??96, period:o.period??5, brightness:o.brightness??255, colors:colors.slice()
-});
+  effect, speed:o.speed??96, period:o.period??5, brightness:o.brightness??255, colors:colors.slice() });
 const WARM=[255,145,65], PINK=[255,40,90], ORANGE=[255,90,0];
 function newPreset(name){
   return { name:name||"新規プリセット", enFront:true, enBack:true,
-    front:newChan(0,[WARM]), back:newChan(1,[PINK,ORANGE],{speed:64,brightness:230}) };
-}
+    front:newChan(0,[WARM]), back:newChan(1,[PINK,ORANGE],{speed:64,brightness:230}) }; }
 
-let lib = load();
-let curIdx = lib.length ? 0 : -1;
-
+let lib = load(); let curIdx = lib.length ? 0 : -1;
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY))||[]; }catch(e){ return []; } }
 function save(){ localStorage.setItem(LS_KEY, JSON.stringify(lib)); }
 if(!lib.length){ lib=[newPreset("暖白のみ"), newPreset("暖白＋桃橙ブレス")];
   lib[0].enBack=false; lib[0].back=newChan(0,[WARM]); save(); curIdx=0; }
 
-// ===== 色ユーティリティ =====
 const toHex = c => '#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');
 const fromHex = h => [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];
+function swatchEl(colors){ const s=document.createElement('span'); s.className='swatch';
+  colors.slice(0,6).forEach(c=>{ const b=document.createElement('i'); b.style.background=toHex(c); s.appendChild(b); }); return s; }
 
-// ===== ライブラリ表示 =====
-function renderLib(){
-  const ul=$('libList'); ul.innerHTML='';
-  lib.forEach((p,i)=>{
-    const li=document.createElement('li'); if(i===curIdx) li.className='sel';
-    const sw=document.createElement('span'); sw.className='swatch';
-    p.front.colors.concat(p.back.colors).slice(0,5).forEach(c=>{
-      const b=document.createElement('i'); b.style.background=toHex(c); sw.appendChild(b); });
-    const nm=document.createElement('span'); nm.className='name'; nm.textContent=p.name;
-    nm.onclick=()=>{ curIdx=i; renderAll(); };
-    li.appendChild(sw); li.appendChild(nm); ul.appendChild(li);
-  });
+// ===== タブ =====
+function setTab(op){
+  $('tabBtnOp').classList.toggle('act',op); $('tabBtnCr').classList.toggle('act',!op);
+  $('pageOp').classList.toggle('act',op);   $('pageCr').classList.toggle('act',!op);
 }
+$('tabBtnOp').onclick=()=>setTab(true);
+$('tabBtnCr').onclick=()=>setTab(false);
 
-// ===== チャンネル編集UI =====
-function chanEditor(hostId, chanKey, title){
-  const p=lib[curIdx], ch=p[chanKey], enabled=chanKey==='front'?p.enFront:p.enBack;
-  const host=$(hostId); host.innerHTML='';
-  const box=document.createElement('div'); box.className='chan'+(enabled?'':' off');
-  box.innerHTML=`<h3>${title}</h3>`;
-
-  // 演出
-  const eff=document.createElement('select');
-  EFFECTS.forEach((n,i)=>eff.add(new Option(n,i)));
-  eff.value=ch.effect; eff.onchange=()=>{ ch.effect=+eff.value; save(); chanEditor(hostId,chanKey,title); renderLib(); };
-  box.appendChild(mkField('演出', eff));
-
-  // 明るさ
-  box.appendChild(mkRange('明るさ', ch.brightness, v=>{ ch.brightness=v; save(); }));
-  // 速度（単色以外）
-  if(ch.effect!==0) box.appendChild(mkRange('速度', ch.speed, v=>{ ch.speed=v; save(); }));
-  // 周期（交互のみ）
-  if(ch.effect===2) box.appendChild(mkRange('周期(LED)', ch.period, v=>{ ch.period=v; save(); }, 1, 30));
-
-  // パレット
-  const palLabel=document.createElement('label'); palLabel.textContent = ch.effect===0?'色':'パレット';
-  box.appendChild(palLabel);
-  const pal=document.createElement('div'); pal.className='pal';
-  ch.colors.forEach((c,i)=>{
-    const wrap=document.createElement('span'); wrap.className='c';
-    const inp=document.createElement('input'); inp.type='color'; inp.value=toHex(c);
-    inp.oninput=()=>{ ch.colors[i]=fromHex(inp.value); save(); renderLib(); };
-    wrap.appendChild(inp);
-    if(ch.colors.length>1){ const x=document.createElement('button'); x.className='x'; x.textContent='×';
-      x.onclick=()=>{ ch.colors.splice(i,1); save(); chanEditor(hostId,chanKey,title); renderLib(); }; wrap.appendChild(x); }
-    pal.appendChild(wrap);
-  });
-  if(ch.effect!==0 && ch.colors.length<MAX_COLORS){
-    const add=document.createElement('button'); add.className='sm'; add.textContent='＋色';
-    add.onclick=()=>{ ch.colors.push([255,255,255]); save(); chanEditor(hostId,chanKey,title); renderLib(); };
-    pal.appendChild(add);
-  }
-  box.appendChild(pal);
-
-  // 動くプレビュー
-  const pl=document.createElement('label'); pl.textContent='プレビュー';
-  box.appendChild(pl);
-  const cv=document.createElement('canvas'); cv.className='preview';
-  cv.width=PREVIEW_N*5; cv.height=22;
-  box.appendChild(cv);
-  previews[chanKey]={ canvas:cv, ctx:cv.getContext('2d'),
-    get:()=>lib[curIdx]?lib[curIdx][chanKey]:null,
-    buf:Array.from({length:PREVIEW_N},()=>[0,0,0]) };
-
-  host.appendChild(box);
-}
-function mkField(label,el){ const d=document.createElement('div');
-  const l=document.createElement('label'); l.textContent=label; d.appendChild(l); d.appendChild(el); return d; }
-function mkRange(label,val,cb,min=0,max=255){
-  const d=document.createElement('div');
-  const l=document.createElement('label'); l.textContent=label;
-  const v=document.createElement('span'); v.className='val'; v.textContent=' '+val; l.appendChild(v);
-  const r=document.createElement('input'); r.type='range'; r.min=min; r.max=max; r.value=val;
-  r.oninput=()=>{ v.textContent=' '+r.value; cb(+r.value); };
-  d.appendChild(l); d.appendChild(r); return d;
-}
-
-function renderEditor(){
-  if(curIdx<0){ $('editor').classList.add('hide'); return; }
-  $('editor').classList.remove('hide');
-  const p=lib[curIdx];
-  $('pName').value=p.name;
-  $('enFront').checked=p.enFront; $('enBack').checked=p.enBack;
-  chanEditor('chFront','front','Front（照明）');
-  chanEditor('chBack','back','Back（背景）');
-}
-$('pName').oninput=()=>{ lib[curIdx].name=$('pName').value; save(); renderLib(); };
-$('enFront').onchange=()=>{ lib[curIdx].enFront=$('enFront').checked; save(); renderEditor(); };
-$('enBack').onchange =()=>{ lib[curIdx].enBack =$('enBack').checked; save(); renderEditor(); };
-$('btnNew').onclick=()=>{ lib.push(newPreset()); curIdx=lib.length-1; save(); renderAll(); };
-$('btnDup').onclick=()=>{ const c=JSON.parse(JSON.stringify(lib[curIdx])); c.name+=" 複製";
-  lib.splice(curIdx+1,0,c); curIdx++; save(); renderAll(); };
-$('btnDel').onclick=()=>{ if(!confirm('このプリセットを削除しますか？'))return;
-  lib.splice(curIdx,1); curIdx=Math.min(curIdx,lib.length-1); save(); renderAll(); };
-
-function renderAll(){ renderLib(); renderEditor(); }
-
-// ===== シリアライズ（ファームの47byteに一致）=====
-function encodeChan(ch){
-  const a=new Uint8Array(23);
+// ===== シリアライズ（ファーム47byteと一致）=====
+function encodeChan(ch){ const a=new Uint8Array(23);
   a[0]=ch.effect; a[1]=ch.speed; a[2]=ch.period; a[3]=ch.brightness; a[4]=ch.colors.length;
-  ch.colors.forEach((c,i)=>{ a[5+i*3]=c[0]; a[5+i*3+1]=c[1]; a[5+i*3+2]=c[2]; });
-  return a;
-}
-function encodePreset(p){
-  const b=new Uint8Array(47);
-  b.set(encodeChan(p.front),0); b.set(encodeChan(p.back),23);
-  b[46]=(p.enFront?1:0)|(p.enBack?2:0);
-  return b;
-}
-function decodeChan(dv,off){
-  const nc=dv.getUint8(off+4), colors=[];
+  ch.colors.forEach((c,i)=>{ a[5+i*3]=c[0]; a[6+i*3]=c[1]; a[7+i*3]=c[2]; }); return a; }
+function encodePreset(p){ const b=new Uint8Array(47);
+  b.set(encodeChan(p.front),0); b.set(encodeChan(p.back),23); b[46]=(p.enFront?1:0)|(p.enBack?2:0); return b; }
+function decodeChan(dv,off){ const nc=dv.getUint8(off+4), colors=[];
   for(let i=0;i<nc;i++) colors.push([dv.getUint8(off+5+i*3),dv.getUint8(off+6+i*3),dv.getUint8(off+7+i*3)]);
   return { effect:dv.getUint8(off),speed:dv.getUint8(off+1),period:dv.getUint8(off+2),
-           brightness:dv.getUint8(off+3),colors:colors.length?colors:[[255,255,255]] };
-}
+           brightness:dv.getUint8(off+3),colors:colors.length?colors:[[255,255,255]] }; }
+function decodePreset(dv){ return { front:decodeChan(dv,0), back:decodeChan(dv,23),
+  enFront:!!(dv.getUint8(46)&1), enBack:!!(dv.getUint8(46)&2) }; }
 
 // ===== BLE =====
 let dev,chState,chSlot,chPData,chCmd;
+let numSlots=8, activeSlot=0, deviceSlots=[];
 const connected = ()=>!!(dev&&dev.gatt&&dev.gatt.connected);
 async function wc(ch,arr){ const b=new Uint8Array(arr);
   if(ch.writeValueWithResponse) await ch.writeValueWithResponse(b); else await ch.writeValue(b); }
@@ -306,6 +245,8 @@ $('btnConnect').onclick=async()=>{
     chState.addEventListener('characteristicvaluechanged',e=>parseState(e.target.value));
     parseState(await chState.readValue());
     setConn(true);
+    await syncSlots();
+    setTab(true);
   }catch(e){ $('connText').textContent='接続失敗: '+e.message; }
 };
 $('btnDisconnect').onclick=()=>{ if(dev&&dev.gatt.connected) dev.gatt.disconnect(); };
@@ -314,33 +255,125 @@ function onDisc(){ setConn(false); }
 function setConn(on){
   $('dot').className=on?'on':''; $('connText').textContent=on?'接続済み':'未接続';
   $('btnConnect').classList.toggle('hide',on); $('btnDisconnect').classList.toggle('hide',!on);
-  $('device').style.opacity=on?'1':'.5';
-  document.querySelectorAll('#device button,#device select').forEach(b=>b.disabled=!on);
+  ['opGlobal','opSlots','crXfer'].forEach(id=>$(id).classList.toggle('offline',!on));
+  $('opHint').classList.toggle('hide',on);
   if(on){ const sel=$('devSlot'); if(!sel.options.length)
-    for(let i=0;i<8;i++) sel.add(new Option('スロット '+i,i)); }
-}
-function parseState(dv){
-  const power=dv.getUint8(0), active=dv.getUint8(2);
-  $('btnPower').textContent = power?'電源 OFF':'電源 ON';
-  $('devSlot').value = active;
+    for(let i=0;i<numSlots;i++) sel.add(new Option('スロット '+i,i)); }
 }
 
-// device controls
+function parseState(dv){
+  const power=dv.getUint8(0); activeSlot=dv.getUint8(2); numSlots=dv.getUint8(4)||8;
+  $('btnPower').textContent = power?'電源 OFF':'電源 ON';
+  renderSlots();
+}
+
+// ===== 本体スロット一覧 =====
+async function syncSlots(){
+  deviceSlots=[];
+  for(let i=0;i<numSlots;i++){ await wc(chSlot,[i]); deviceSlots[i]=decodePreset(await chPData.readValue()); }
+  renderSlots();
+}
+function chanLine(tag, ch, en){
+  const line=document.createElement('div'); line.className='cline';
+  const t=document.createElement('span'); t.className='tag'; t.textContent=tag; line.appendChild(t);
+  if(!en){ const s=document.createElement('span'); s.className='muted'; s.textContent='—'; line.appendChild(s); return line; }
+  const nm=document.createElement('span'); nm.textContent=EFFECTS[ch.effect]||'?'; line.appendChild(nm);
+  line.appendChild(swatchEl(ch.colors)); return line;
+}
+function renderSlots(){
+  const box=$('slotList'); if(!box) return; box.innerHTML='';
+  deviceSlots.forEach((p,i)=>{
+    const card=document.createElement('button'); card.className='slotcard'+(i===activeSlot?' active':'');
+    const no=document.createElement('div'); no.className='no'; no.textContent=i; card.appendChild(no);
+    const info=document.createElement('div'); info.className='info';
+    info.appendChild(chanLine('F', p.front, p.enFront));
+    info.appendChild(chanLine('B', p.back, p.enBack));
+    card.appendChild(info);
+    if(i===activeSlot){ const b=document.createElement('span'); b.className='badge'; b.textContent='点灯中'; card.appendChild(b); }
+    card.onclick=()=>{ if(connected()) wc(chCmd,[CMD.APPLY,i]); };
+    box.appendChild(card);
+  });
+}
+$('btnSync').onclick=()=>{ if(connected()) syncSlots(); };
+
+// 全体操作
 $('btnPower').onclick=()=>wc(chCmd,[CMD.POWER, $('btnPower').textContent.includes('ON')?1:0]);
 document.querySelectorAll('.bri').forEach(b=>b.onclick=()=>wc(chCmd,[CMD.BRIGHTNESS,+b.dataset.i]));
 document.querySelectorAll('.ch').forEach(b=>b.onclick=()=>wc(chCmd,[CMD.CHANNEL,+b.dataset.m]));
-$('btnSend').onclick=async()=>{ const slot=+$('devSlot').value;
-  await wc(chSlot,[slot]); await wc(chPData, Array.from(encodePreset(lib[curIdx]))); await wc(chCmd,[CMD.APPLY,slot]); };
-$('btnSaveNvs').onclick=()=>wc(chCmd,[CMD.SAVE]);
-$('btnImport').onclick=async()=>{ const slot=+$('devSlot').value;
-  await wc(chSlot,[slot]); const dv=await chPData.readValue();
-  const p={ name:'スロット'+slot+'取込', front:decodeChan(dv,0), back:decodeChan(dv,23),
-    enFront:!!(dv.getUint8(46)&1), enBack:!!(dv.getUint8(46)&2) };
-  lib.push(p); curIdx=lib.length-1; save(); renderAll(); };
 
-// ===== 動くプレビュー（ファームの演出ロジックをJSで同等再現）=====
-const PREVIEW_N = 60;
-let previews = {};
+// ===== ライブラリ / 編集 =====
+function renderLib(){
+  const ul=$('libList'); ul.innerHTML='';
+  lib.forEach((p,i)=>{
+    const li=document.createElement('li'); if(i===curIdx) li.className='sel';
+    li.appendChild(swatchEl(p.front.colors.concat(p.back.colors)));
+    const nm=document.createElement('span'); nm.className='name'; nm.textContent=p.name;
+    nm.onclick=()=>{ curIdx=i; renderAll(); };
+    li.appendChild(nm); ul.appendChild(li);
+  });
+}
+function chanEditor(hostId, chanKey, title){
+  const p=lib[curIdx], ch=p[chanKey], enabled=chanKey==='front'?p.enFront:p.enBack;
+  const host=$(hostId); host.innerHTML='';
+  const box=document.createElement('div'); box.className='chan'; box.innerHTML=`<h3>${title}</h3>`;
+  if(!enabled){ box.style.opacity=.5; }
+  const eff=document.createElement('select'); EFFECTS.forEach((n,i)=>eff.add(new Option(n,i)));
+  eff.value=ch.effect; eff.onchange=()=>{ ch.effect=+eff.value; save(); chanEditor(hostId,chanKey,title); renderLib(); };
+  box.appendChild(mkField('演出', eff));
+  box.appendChild(mkRange('明るさ', ch.brightness, v=>{ ch.brightness=v; save(); }));
+  if(ch.effect!==0) box.appendChild(mkRange('速度', ch.speed, v=>{ ch.speed=v; save(); }));
+  if(ch.effect===2) box.appendChild(mkRange('周期(LED)', ch.period, v=>{ ch.period=v; save(); }, 1, 30));
+  const palLabel=document.createElement('label'); palLabel.textContent = ch.effect===0?'色':'パレット'; box.appendChild(palLabel);
+  const pal=document.createElement('div'); pal.className='pal';
+  ch.colors.forEach((c,i)=>{
+    const wrap=document.createElement('span'); wrap.className='c';
+    const inp=document.createElement('input'); inp.type='color'; inp.value=toHex(c);
+    inp.oninput=()=>{ ch.colors[i]=fromHex(inp.value); save(); renderLib(); };
+    wrap.appendChild(inp);
+    if(ch.colors.length>1){ const x=document.createElement('button'); x.className='x'; x.textContent='×';
+      x.onclick=()=>{ ch.colors.splice(i,1); save(); chanEditor(hostId,chanKey,title); renderLib(); }; wrap.appendChild(x); }
+    pal.appendChild(wrap);
+  });
+  if(ch.effect!==0 && ch.colors.length<MAX_COLORS){ const add=document.createElement('button'); add.className='sm'; add.textContent='＋色';
+    add.onclick=()=>{ ch.colors.push([255,255,255]); save(); chanEditor(hostId,chanKey,title); renderLib(); }; pal.appendChild(add); }
+  box.appendChild(pal);
+  const pl=document.createElement('label'); pl.textContent='プレビュー'; box.appendChild(pl);
+  const cv=document.createElement('canvas'); cv.className='preview'; cv.width=PREVIEW_N*5; cv.height=22; box.appendChild(cv);
+  previews[chanKey]={ canvas:cv, ctx:cv.getContext('2d'), get:()=>lib[curIdx]?lib[curIdx][chanKey]:null,
+    buf:Array.from({length:PREVIEW_N},()=>[0,0,0]) };
+  host.appendChild(box);
+}
+function mkField(label,el){ const d=document.createElement('div'); const l=document.createElement('label'); l.textContent=label;
+  d.appendChild(l); d.appendChild(el); return d; }
+function mkRange(label,val,cb,min=0,max=255){ const d=document.createElement('div');
+  const l=document.createElement('label'); l.textContent=label; const v=document.createElement('span');
+  v.className='val'; v.textContent=' '+val; l.appendChild(v);
+  const r=document.createElement('input'); r.type='range'; r.min=min; r.max=max; r.value=val;
+  r.oninput=()=>{ v.textContent=' '+r.value; cb(+r.value); }; d.appendChild(l); d.appendChild(r); return d; }
+function renderEditor(){
+  if(curIdx<0){ $('editor').classList.add('hide'); return; } $('editor').classList.remove('hide');
+  const p=lib[curIdx]; $('pName').value=p.name; $('enFront').checked=p.enFront; $('enBack').checked=p.enBack;
+  chanEditor('chFront','front','Front（照明）'); chanEditor('chBack','back','Back（背景）');
+}
+$('pName').oninput=()=>{ lib[curIdx].name=$('pName').value; save(); renderLib(); };
+$('enFront').onchange=()=>{ lib[curIdx].enFront=$('enFront').checked; save(); renderEditor(); };
+$('enBack').onchange =()=>{ lib[curIdx].enBack =$('enBack').checked; save(); renderEditor(); };
+$('btnNew').onclick=()=>{ lib.push(newPreset()); curIdx=lib.length-1; save(); renderAll(); };
+$('btnDup').onclick=()=>{ const c=JSON.parse(JSON.stringify(lib[curIdx])); c.name+=" 複製"; lib.splice(curIdx+1,0,c); curIdx++; save(); renderAll(); };
+$('btnDel').onclick=()=>{ if(!confirm('このプリセットを削除しますか？'))return; lib.splice(curIdx,1); curIdx=Math.min(curIdx,lib.length-1); save(); renderAll(); };
+function renderAll(){ renderLib(); renderEditor(); }
+
+// 転送
+$('btnSend').onclick=async()=>{ if(!connected())return; const slot=+$('devSlot').value;
+  await wc(chSlot,[slot]); await wc(chPData, Array.from(encodePreset(lib[curIdx]))); await wc(chCmd,[CMD.APPLY,slot]); await syncSlots(); };
+$('btnSaveNvs').onclick=()=>{ if(connected()) wc(chCmd,[CMD.SAVE]); };
+$('btnFactory').onclick=async()=>{ if(!connected())return; if(confirm('本体を工場出荷に戻します。よろしいですか？')){ await wc(chCmd,[CMD.FACTORY]); await syncSlots(); } };
+$('btnImport').onclick=async()=>{ if(!connected())return; const slot=+$('devSlot').value;
+  await wc(chSlot,[slot]); const p=decodePreset(await chPData.readValue()); p.name='スロット'+slot+'取込';
+  lib.push(p); curIdx=lib.length-1; save(); renderAll(); setTab(false); };
+
+// ===== 動くプレビュー =====
+const PREVIEW_N = 60; let previews = {};
 const mapJS=(v,a,b,c,d)=>Math.floor((v-a)*(d-c)/(b-a))+c;
 const scale8JS=(x,s)=>Math.floor(x*s/255);
 const blendJS=(a,b,f)=>[0,1,2].map(k=>Math.round(a[k]+(b[k]-a[k])*f/255));
@@ -349,35 +382,28 @@ const beatsin8JS=(bpm,t)=>Math.round(128+127*Math.sin((t/60000)*bpm*2*Math.PI));
 const palC=(ch,i)=>{const n=ch.colors.length||1;return ch.colors[i%n].slice();};
 function paletteAtJS(ch,t){ const n=ch.colors.length||1; if(n===1)return palC(ch,0);
   const s=t*n, seg=Math.floor(s/256), f=s&255; return blendJS(palC(ch,seg%n),palC(ch,(seg+1)%n),f); }
-
-function renderChannelJS(ch,n,t,buf){
-  const nc=ch.colors.length||1, out=buf;
+function renderChannelJS(ch,n,t,buf){ const nc=ch.colors.length||1, out=buf;
   switch(ch.effect){
     case 0: for(let i=0;i<n;i++) out[i]=palC(ch,0); break;
     case 1:{ const bpm=mapJS(ch.speed,0,255,4,30);
       if(nc>=2){ const col=paletteAtJS(ch,beatsin8JS(bpm,t)); for(let i=0;i<n;i++) out[i]=col.slice(); }
-      else{ const col=nscaleV(palC(ch,0),scale8JS(beatsin8JS(bpm,t),200)+55); for(let i=0;i<n;i++) out[i]=col.slice(); }
-      break; }
+      else{ const col=nscaleV(palC(ch,0),scale8JS(beatsin8JS(bpm,t),200)+55); for(let i=0;i<n;i++) out[i]=col.slice(); } break; }
     case 2:{ const blk=ch.period||1, scroll=ch.speed===0?0:Math.floor(t/mapJS(ch.speed,1,255,400,20));
       for(let i=0;i<n;i++) out[i]=palC(ch,Math.floor((i+scroll)/blk)%nc); break; }
     case 3:{ const denom=17-mapJS(ch.speed,0,255,2,15);
       for(let i=0;i<n;i++) out[i]=paletteAtJS(ch,(i*8+Math.floor(t/denom))&255); break; }
     case 4:{ for(let i=0;i<n;i++) out[i]=out[i]?out[i].map(v=>Math.floor(v*215/255)):[0,0,0];
       const div=Math.max(1,mapJS(ch.speed,0,255,80,10)), step=Math.floor(t/div);
-      for(let k=0;k<nc;k++){ const pos=(step+k*Math.floor(n/nc))%n; out[pos]=nscaleV(palC(ch,k),ch.brightness); }
-      return out; }  // chaseは点配置時に明るさ適用済み
+      for(let k=0;k<nc;k++){ const pos=(step+k*Math.floor(n/nc))%n; out[pos]=nscaleV(palC(ch,k),ch.brightness); } return out; }
   }
-  if(ch.brightness<255) for(let i=0;i<n;i++) out[i]=nscaleV(out[i],ch.brightness);
-  return out;
-}
+  if(ch.brightness<255) for(let i=0;i<n;i++) out[i]=nscaleV(out[i],ch.brightness); return out; }
 function animate(t){
   for(const key in previews){ const pv=previews[key];
     if(!pv.canvas.isConnected){ delete previews[key]; continue; }
     const ch=pv.get(); if(!ch) continue;
     const cols=renderChannelJS(ch,PREVIEW_N,t,pv.buf);
     const g=pv.ctx, W=pv.canvas.width, H=pv.canvas.height, w=W/PREVIEW_N;
-    for(let i=0;i<PREVIEW_N;i++){ const c=cols[i];
-      g.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; g.fillRect(i*w,0,Math.ceil(w),H); }
+    for(let i=0;i<PREVIEW_N;i++){ const c=cols[i]; g.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; g.fillRect(i*w,0,Math.ceil(w),H); }
   }
   requestAnimationFrame(animate);
 }
