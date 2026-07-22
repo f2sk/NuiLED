@@ -203,8 +203,11 @@ if(!lib.length){ lib=[newPreset("暖白のみ"), newPreset("暖白＋桃橙ブ�
 
 const toHex = c => '#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');
 const fromHex = h => [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];
+// 実機の見え方に寄せる：LEDはリニア、モニタはsRGB。逆ガンマで中間を明るく＝白っぽく見せる
+const VIEW_GAMMA = 2.2;
+const ledView = c => c.map(v => Math.round(255*Math.pow(v/255, 1/VIEW_GAMMA)));
 function swatchEl(colors){ const s=document.createElement('span'); s.className='swatch';
-  colors.slice(0,6).forEach(c=>{ const b=document.createElement('i'); b.style.background=toHex(c); s.appendChild(b); }); return s; }
+  colors.slice(0,6).forEach(c=>{ const b=document.createElement('i'); b.style.background=toHex(ledView(c)); s.appendChild(b); }); return s; }
 
 // ===== タブ =====
 function setTab(op){
@@ -403,7 +406,7 @@ function animate(t){
     const ch=pv.get(); if(!ch) continue;
     const cols=renderChannelJS(ch,PREVIEW_N,t,pv.buf);
     const g=pv.ctx, W=pv.canvas.width, H=pv.canvas.height, w=W/PREVIEW_N;
-    for(let i=0;i<PREVIEW_N;i++){ const c=cols[i]; g.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; g.fillRect(i*w,0,Math.ceil(w),H); }
+    for(let i=0;i<PREVIEW_N;i++){ const c=ledView(cols[i]); g.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; g.fillRect(i*w,0,Math.ceil(w),H); }
   }
   requestAnimationFrame(animate);
 }
