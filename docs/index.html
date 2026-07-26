@@ -118,9 +118,10 @@
       </div>
       <div class="row" style="margin-top:8px">
         <span class="muted">出力</span>
-        <button class="ch sm" data-m="3">両方</button>
+        <button class="ch sm" data-m="7">全て</button>
         <button class="ch sm" data-m="1">Front</button>
         <button class="ch sm" data-m="2">Back</button>
+        <button class="ch sm" data-m="4">Ground</button>
       </div>
     </section>
 
@@ -149,11 +150,14 @@
       <input type="text" id="pName" placeholder="プリセット名">
       <div class="row" style="margin-top:12px">
         <label style="margin:0"><input type="checkbox" id="enFront"> Front（照明）</label>
-        <label style="margin:0;margin-left:16px"><input type="checkbox" id="enBack"> Back（背景）</label>
+        <label style="margin:0"><input type="checkbox" id="enBack"> Back（背景）</label>
+        <label style="margin:0"><input type="checkbox" id="enGround"> Ground（床）</label>
       </div>
       <div id="chFront"></div>
       <div id="chBack"></div>
+      <div id="chGround"></div>
       <div class="row" style="margin-top:14px">
+        <button id="btnSwapFB" class="sm">Front⇄Back 入れ替え</button>
         <button id="btnDup" class="sm">複製</button>
         <button id="btnDel" class="sm" style="color:var(--danger)">削除</button>
       </div>
@@ -192,14 +196,18 @@ const newChan = (effect, colors, o={}) => ({
   effect, speed:o.speed??96, period:o.period??5, brightness:o.brightness??255, colors:colors.slice() });
 const WARM=[255,145,65], PINK=[255,40,90], ORANGE=[255,90,0];
 function newPreset(name){
-  return { name:name||"新規プリセット", enFront:true, enBack:true,
-    front:newChan(0,[WARM]), back:newChan(1,[PINK,ORANGE],{speed:64,brightness:230}) }; }
+  return { name:name||"新規プリセット", enFront:true, enBack:true, enGround:true,
+    front:newChan(0,[WARM]), back:newChan(1,[PINK,ORANGE],{speed:64,brightness:230}),
+    ground:newChan(0,[WARM],{brightness:90}) }; }
 
 let lib = load(); let curIdx = lib.length ? 0 : -1;
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY))||[]; }catch(e){ return []; } }
 function save(){ localStorage.setItem(LS_KEY, JSON.stringify(lib)); }
 if(!lib.length){ lib=[newPreset("暖白のみ"), newPreset("暖白＋桃橙ブレス")];
   lib[0].enBack=false; lib[0].back=newChan(0,[WARM]); save(); curIdx=0; }
+// 旧2チャンネル(Front/Back)プリセットにGroundを補完
+lib.forEach(p=>{ if(!p.ground) p.ground=newChan(0,[WARM],{brightness:90});
+  if(p.enGround===undefined) p.enGround=true; });
 
 const toHex = c => '#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');
 const fromHex = h => [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];
@@ -221,14 +229,15 @@ $('tabBtnCr').onclick=()=>setTab(false);
 function encodeChan(ch){ const a=new Uint8Array(23);
   a[0]=ch.effect; a[1]=ch.speed; a[2]=ch.period; a[3]=ch.brightness; a[4]=ch.colors.length;
   ch.colors.forEach((c,i)=>{ a[5+i*3]=c[0]; a[6+i*3]=c[1]; a[7+i*3]=c[2]; }); return a; }
-function encodePreset(p){ const b=new Uint8Array(47);
-  b.set(encodeChan(p.front),0); b.set(encodeChan(p.back),23); b[46]=(p.enFront?1:0)|(p.enBack?2:0); return b; }
+function encodePreset(p){ const b=new Uint8Array(70);
+  b.set(encodeChan(p.front),0); b.set(encodeChan(p.back),23); b.set(encodeChan(p.ground),46);
+  b[69]=(p.enFront?1:0)|(p.enBack?2:0)|(p.enGround?4:0); return b; }
 function decodeChan(dv,off){ const nc=dv.getUint8(off+4), colors=[];
   for(let i=0;i<nc;i++) colors.push([dv.getUint8(off+5+i*3),dv.getUint8(off+6+i*3),dv.getUint8(off+7+i*3)]);
   return { effect:dv.getUint8(off),speed:dv.getUint8(off+1),period:dv.getUint8(off+2),
            brightness:dv.getUint8(off+3),colors:colors.length?colors:[[255,255,255]] }; }
-function decodePreset(dv){ return { front:decodeChan(dv,0), back:decodeChan(dv,23),
-  enFront:!!(dv.getUint8(46)&1), enBack:!!(dv.getUint8(46)&2) }; }
+function decodePreset(dv){ return { name:'', front:decodeChan(dv,0), back:decodeChan(dv,23), ground:decodeChan(dv,46),
+  enFront:!!(dv.getUint8(69)&1), enBack:!!(dv.getUint8(69)&2), enGround:!!(dv.getUint8(69)&4) }; }
 
 // ===== BLE =====
 let dev,chState,chSlot,chPData,chCmd;
@@ -291,6 +300,7 @@ function renderSlots(){
     const info=document.createElement('div'); info.className='info';
     info.appendChild(chanLine('F', p.front, p.enFront));
     info.appendChild(chanLine('B', p.back, p.enBack));
+    info.appendChild(chanLine('G', p.ground, p.enGround));
     card.appendChild(info);
     if(i===activeSlot){ const b=document.createElement('span'); b.className='badge'; b.textContent='点灯中'; card.appendChild(b); }
     card.onclick=()=>{ if(connected()) wc(chCmd,[CMD.APPLY,i]); };
@@ -355,12 +365,17 @@ function mkRange(label,val,cb,min=0,max=255){ const d=document.createElement('di
   r.oninput=()=>{ v.textContent=' '+r.value; cb(+r.value); }; d.appendChild(l); d.appendChild(r); return d; }
 function renderEditor(){
   if(curIdx<0){ $('editor').classList.add('hide'); return; } $('editor').classList.remove('hide');
-  const p=lib[curIdx]; $('pName').value=p.name; $('enFront').checked=p.enFront; $('enBack').checked=p.enBack;
+  const p=lib[curIdx]; $('pName').value=p.name;
+  $('enFront').checked=p.enFront; $('enBack').checked=p.enBack; $('enGround').checked=p.enGround;
   chanEditor('chFront','front','Front（照明）'); chanEditor('chBack','back','Back（背景）');
+  chanEditor('chGround','ground','Ground（床）');
 }
 $('pName').oninput=()=>{ lib[curIdx].name=$('pName').value; save(); renderLib(); };
-$('enFront').onchange=()=>{ lib[curIdx].enFront=$('enFront').checked; save(); renderEditor(); };
-$('enBack').onchange =()=>{ lib[curIdx].enBack =$('enBack').checked; save(); renderEditor(); };
+$('enFront').onchange =()=>{ lib[curIdx].enFront =$('enFront').checked; save(); renderEditor(); };
+$('enBack').onchange  =()=>{ lib[curIdx].enBack  =$('enBack').checked; save(); renderEditor(); };
+$('enGround').onchange=()=>{ lib[curIdx].enGround=$('enGround').checked; save(); renderEditor(); };
+$('btnSwapFB').onclick=()=>{ const p=lib[curIdx];
+  [p.front,p.back]=[p.back,p.front]; [p.enFront,p.enBack]=[p.enBack,p.enFront]; save(); renderEditor(); renderLib(); };
 $('btnNew').onclick=()=>{ lib.push(newPreset()); curIdx=lib.length-1; save(); renderAll(); };
 $('btnDup').onclick=()=>{ const c=JSON.parse(JSON.stringify(lib[curIdx])); c.name+=" 複製"; lib.splice(curIdx+1,0,c); curIdx++; save(); renderAll(); };
 $('btnDel').onclick=()=>{ if(!confirm('このプリセットを削除しますか？'))return; lib.splice(curIdx,1); curIdx=Math.min(curIdx,lib.length-1); save(); renderAll(); };

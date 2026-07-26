@@ -10,9 +10,15 @@ constexpr uint8_t PIN_BUS_EN     = 3;   // D2 (GPIO3) → 2N7000 → P-MOS母線
 constexpr uint8_t PIN_SW1        = 4;   // D3 (GPIO4) 内部プルアップ
 constexpr uint8_t PIN_SW2        = 5;   // D4 (GPIO5) 内部プルアップ
 
-// ===== LED構成 =====
-constexpr uint16_t NUM_FRONT = 60;      // 60LED/m × 1本
-constexpr uint16_t NUM_BACK  = 60;      // 60LED/m × 1本
+// ===== LED構成（ゾーン分割）=====
+// 各データ線60球。根本17球=床(Ground)、残り43球=壁(Front/Back)。
+// データ線A=D0, データ線B=D1。床はA/B両方の先頭17球を合わせて1ゾーン(34球)。
+constexpr uint16_t STRIP_LEN    = 60;              // 1データ線あたりの球数
+constexpr uint16_t GROUND_LEN   = 17;              // 根本の床セグメント（各線）
+constexpr uint16_t WALL_LEN     = STRIP_LEN - GROUND_LEN;  // 壁面（43）
+constexpr uint16_t GROUND_TOTAL = GROUND_LEN * 2;         // 床ゾーン合計（34）
+// 壁の割り当て（コネクタ逆対応）: true=線A壁がBack/線B壁がFront
+constexpr bool SWAP_WALL = true;
 
 // ===== 電源クランプ（仕様書14.1/14.6：2.5A頭打ち） =====
 constexpr uint8_t  PWR_VOLTS     = 5;
@@ -48,13 +54,14 @@ struct ChannelPreset {
 };
 static_assert(sizeof(ChannelPreset) == 5 + MAX_COLORS * 3, "ChannelPreset size");
 
-// ===== プリセット（Front/Back 各チャンネル＋有効フラグ）=====
+// ===== プリセット（Front/Back/Ground 各チャンネル＋有効フラグ）=====
 struct Preset {
   ChannelPreset front;
   ChannelPreset back;
-  uint8_t flags;                  // bit0=Front有効, bit1=Back有効（=CH_*）
+  ChannelPreset ground;
+  uint8_t flags;                  // bit0=Front, bit1=Back, bit2=Ground（=CH_*）
 };
-static_assert(sizeof(Preset) == sizeof(ChannelPreset) * 2 + 1, "Preset size (NVS/BLE共通)");
+static_assert(sizeof(Preset) == sizeof(ChannelPreset) * 3 + 1, "Preset size (NVS/BLE共通)");
 
 // パレットのi番目をCRGBで取得
 inline CRGB palColor(const ChannelPreset& c, uint8_t i) {
@@ -68,14 +75,16 @@ const CRGB COL_WARM_WHITE = CRGB(255, 145, 65);  // 暖色寄りの白（R満・
 const CRGB COL_PINK       = CRGB(255, 40, 90);
 const CRGB COL_ORANGE     = CRGB(255, 90, 0);
 
-// ===== チャンネルマスク（SW2長押しで Front/Back 個別サイクル） =====
-constexpr uint8_t CH_FRONT = 0x01;
-constexpr uint8_t CH_BACK  = 0x02;
-constexpr uint8_t CH_BOTH  = 0x03;
+// ===== チャンネルマスク（SW2長押しで 個別サイクル） =====
+constexpr uint8_t CH_FRONT  = 0x01;
+constexpr uint8_t CH_BACK   = 0x02;
+constexpr uint8_t CH_GROUND = 0x04;
+constexpr uint8_t CH_ALL    = 0x07;
 inline uint8_t nextChannelMask(uint8_t m) {
-  if (m == CH_BOTH)  return CH_FRONT;   // 両方 → Frontのみ → Backのみ → 両方
+  if (m == CH_ALL)   return CH_FRONT;   // 全て → Front → Back → Ground → 全て
   if (m == CH_FRONT) return CH_BACK;
-  return CH_BOTH;
+  if (m == CH_BACK)  return CH_GROUND;
+  return CH_ALL;
 }
 
 // ===== ボタン判定 =====
@@ -90,5 +99,5 @@ struct AppState {
   bool    powerOn;          // 全体ON/OFF（母線EN）
   uint8_t brightnessIndex;  // BRIGHTNESS_LEVELS のインデックス
   uint8_t activeSlot;       // 0..NUM_SLOTS-1
-  uint8_t channelMask;      // CH_FRONT/CH_BACK/CH_BOTH
+  uint8_t channelMask;      // CH_FRONT/CH_BACK/CH_GROUND の組合せ
 };

@@ -35,51 +35,55 @@ static const uint8_t TB = 90;
 static void factory() {
   uint8_t two[6], three[9];
 
+  // 全スロット共通：Ground=暖白のアンビエント（後でUIで変更可）
+  for (uint8_t i = 0; i < NUM_SLOTS; i++)
+    mkChan(g_slots[i].ground, EFF_SOLID, 0, 0, TB, 1, WARM);
+
   // slot0: 暖白のみ（Front単色、Back無効）
   mkChan(g_slots[0].front, EFF_SOLID, 0, 0, TB, 1, WARM);
   mkChan(g_slots[0].back,  EFF_SOLID, 0, 0, TB, 1, WARM);
-  g_slots[0].flags = CH_FRONT;
+  g_slots[0].flags = CH_FRONT | CH_GROUND;
 
   // slot1: 暖白 + 桃橙ブレス
   cat2(two, PINK, ORANGE);
   mkChan(g_slots[1].front, EFF_SOLID,  0, 0, TB, 1, WARM);
   mkChan(g_slots[1].back,  EFF_BREATH, 64, 0, TB, 2, two);
-  g_slots[1].flags = CH_BOTH;
+  g_slots[1].flags = CH_ALL;
 
   // slot2: 暖白 + 桃橙ウェーブ
   cat2(two, ORANGE, PINK);
   mkChan(g_slots[2].front, EFF_SOLID, 0, 0, TB, 1, WARM);
   mkChan(g_slots[2].back,  EFF_WAVE, 128, 0, TB, 2, two);
-  g_slots[2].flags = CH_BOTH;
+  g_slots[2].flags = CH_ALL;
 
   // slot3: 暖白 + 桃橙チェイス
   cat2(two, PINK, ORANGE);
   mkChan(g_slots[3].front, EFF_SOLID,  0, 0, TB, 1, WARM);
   mkChan(g_slots[3].back,  EFF_CHASE, 128, 0, TB, 2, two);
-  g_slots[3].flags = CH_BOTH;
+  g_slots[3].flags = CH_ALL;
 
   // slot4: 暖白 + 3色交互（周期5LED）
   cat3(three, PINK, ORANGE, WARM);
   mkChan(g_slots[4].front, EFF_SOLID,     0, 0, TB, 1, WARM);
   mkChan(g_slots[4].back,  EFF_ALTERNATE, 40, 5, TB, 3, three);
-  g_slots[4].flags = CH_BOTH;
+  g_slots[4].flags = CH_ALL;
 
   // slot5: Back桃橙ブレスのみ（Front無効）
   cat2(two, PINK, ORANGE);
   mkChan(g_slots[5].front, EFF_SOLID,  0, 0, TB, 1, WARM);
   mkChan(g_slots[5].back,  EFF_BREATH, 40, 0, TB, 2, two);
-  g_slots[5].flags = CH_BACK;
+  g_slots[5].flags = CH_BACK | CH_GROUND;
 
   // slot6: Back速ウェーブのみ
   cat2(two, PINK, ORANGE);
   mkChan(g_slots[6].front, EFF_SOLID, 0, 0, TB, 1, WARM);
   mkChan(g_slots[6].back,  EFF_WAVE, 220, 0, TB, 2, two);
-  g_slots[6].flags = CH_BACK;
+  g_slots[6].flags = CH_BACK | CH_GROUND;
 
   // slot7: 暖白のみ（予備）
   mkChan(g_slots[7].front, EFF_SOLID, 0, 0, TB, 1, WARM);
   mkChan(g_slots[7].back,  EFF_SOLID, 0, 0, TB, 1, WARM);
-  g_slots[7].flags = CH_FRONT;
+  g_slots[7].flags = CH_FRONT | CH_GROUND;
 }
 
 void presetsLoad() {

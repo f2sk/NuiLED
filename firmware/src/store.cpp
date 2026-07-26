@@ -10,13 +10,13 @@ void storeLoad(AppState& s) {
   s.powerOn         = prefs.getBool("pwr", true);
   s.brightnessIndex = prefs.getUChar("bri", 1);   // 既定=50%
   s.activeSlot      = prefs.getUChar("slot", 0);
-  s.channelMask     = prefs.getUChar("ch",  CH_BOTH);
+  s.channelMask     = prefs.getUChar("ch",  CH_ALL);
   prefs.end();
 
   // 範囲外値のガード
   if (s.brightnessIndex >= NUM_BRIGHTNESS) s.brightnessIndex = 1;
   if (s.activeSlot >= NUM_SLOTS)           s.activeSlot = 0;
-  if (s.channelMask == 0 || s.channelMask > CH_BOTH) s.channelMask = CH_BOTH;
+  if (s.channelMask == 0 || s.channelMask > CH_ALL) s.channelMask = CH_ALL;
 }
 
 void storeSave(const AppState& s) {

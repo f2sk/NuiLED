@@ -1,13 +1,16 @@
 #include "config.h"
 #include "leds.h"
 
-// LEDバッファ（Front/Back 独立2系統）
-static CRGB frontLeds[NUM_FRONT];
-static CRGB backLeds[NUM_BACK];
+// 物理データ線バッファ（各60球）。lineA=D0, lineB=D1。
+// 各線 [0..GROUND_LEN) = 床セグメント、[GROUND_LEN..STRIP_LEN) = 壁面。
+static CRGB lineA[STRIP_LEN];
+static CRGB lineB[STRIP_LEN];
+// 床ゾーンの作業バッファ（34球連続。チェイスのフェード保持のため常設）
+static CRGB groundBuf[GROUND_TOTAL];
 
 void ledsInit() {
-  FastLED.addLeds<WS2812B, PIN_FRONT_DATA, GRB>(frontLeds, NUM_FRONT);
-  FastLED.addLeds<WS2812B, PIN_BACK_DATA,  GRB>(backLeds,  NUM_BACK);
+  FastLED.addLeds<WS2812B, PIN_FRONT_DATA, GRB>(lineA, STRIP_LEN);
+  FastLED.addLeds<WS2812B, PIN_BACK_DATA,  GRB>(lineB, STRIP_LEN);
   // 全体電流の上限クランプ（全白でも自動減光で2.5A以下）
   FastLED.setMaxPowerInVoltsAndMilliamps(PWR_VOLTS, PWR_MILLIAMPS);
   FastLED.clear(true);
@@ -84,14 +87,33 @@ static void renderChannel(CRGB* buf, uint16_t n, const ChannelPreset& c, uint32_
 }
 
 void ledsRender(const AppState& s, const Preset& p, uint32_t now) {
-  const bool fe = (p.flags & CH_FRONT) && (s.channelMask & CH_FRONT);
-  const bool be = (p.flags & CH_BACK)  && (s.channelMask & CH_BACK);
+  const bool fe = (p.flags & CH_FRONT)  && (s.channelMask & CH_FRONT);
+  const bool be = (p.flags & CH_BACK)   && (s.channelMask & CH_BACK);
+  const bool ge = (p.flags & CH_GROUND) && (s.channelMask & CH_GROUND);
 
-  if (fe) renderChannel(frontLeds, NUM_FRONT, p.front, now);
-  else    fill_solid(frontLeds, NUM_FRONT, CRGB::Black);
+  // 壁の割り当て（コネクタ逆対応）：どちらの線の壁がFront/Backか
+  CRGB* frontLine = SWAP_WALL ? lineB : lineA;
+  CRGB* backLine  = SWAP_WALL ? lineA : lineB;
 
-  if (be) renderChannel(backLeds, NUM_BACK, p.back, now);
-  else    fill_solid(backLeds, NUM_BACK, CRGB::Black);
+  // Front壁 = frontLine[GROUND_LEN..STRIP_LEN)
+  if (fe) renderChannel(frontLine + GROUND_LEN, WALL_LEN, p.front, now);
+  else    fill_solid(frontLine + GROUND_LEN, WALL_LEN, CRGB::Black);
+
+  // Back壁 = backLine[GROUND_LEN..STRIP_LEN)
+  if (be) renderChannel(backLine + GROUND_LEN, WALL_LEN, p.back, now);
+  else    fill_solid(backLine + GROUND_LEN, WALL_LEN, CRGB::Black);
+
+  // Ground = 34球連続で描画 → lineA床[0..17)とlineB床[0..17)へ分配
+  if (ge) {
+    renderChannel(groundBuf, GROUND_TOTAL, p.ground, now);
+    for (uint16_t i = 0; i < GROUND_LEN; i++) {
+      lineA[i] = groundBuf[i];
+      lineB[i] = groundBuf[GROUND_LEN + i];
+    }
+  } else {
+    fill_solid(lineA, GROUND_LEN, CRGB::Black);
+    fill_solid(lineB, GROUND_LEN, CRGB::Black);
+  }
 }
 
 void ledsShow() {

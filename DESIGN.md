@@ -252,13 +252,18 @@ Service UUID: `a1b20001-5c3d-4e6f-8a90-1234567890ab`
 | Command | ...0005 | W | オペコード（下記） |
 | Realtime | ...0006 | W(no-rsp) | **②用に予約**（現状スタブ） |
 
-Preset(47byte) = Front + Back の2チャンネル＋flags。各チャンネルは共通の演出エンジン：
+Preset(70byte) = Front + Back + Ground の3チャンネル＋flags。各チャンネルは共通の演出エンジン：
 
 - **ChannelPreset(23byte)**: `effect, speed, period, brightness, numColors, palette[RGB×6]`
-- **Preset**: `front(23) + back(23) + flags(1)`（flags bit0=Front有効, bit1=Back有効）
+- **Preset**: `front(23) + back(23) + ground(23) + flags(1)`（flags bit0=Front, bit1=Back, bit2=Ground）
 - **Effect**: 0=単色 / 1=ブレス / 2=交互(周期＝ブロック長) / 3=ウェーブ / 4=チェイス
 - **明るさ**: チャンネル毎の brightness × グローバルマスタ（SW1/BLE）
 - パレット最大6色（`MAX_COLORS`、可変）
+
+**ゾーン構成**（物理2データ線を3ゾーンへ）：各線60球のうち根本 `GROUND_LEN=17` 球が床。
+- Ground = 線A床[0..16]＋線B床[0..16]（34球を連続扱い）
+- Front / Back = 各線の壁[17..59]（43球）。`SWAP_WALL` で線A/線Bの壁割当を入れ替え（コネクタ逆対応）
+- チャンネルマスク: CH_FRONT=1 / CH_BACK=2 / CH_GROUND=4
 
 Commandオペコード: `0x01`=APPLY(スロット適用) / `0x02`=SAVE(全スロットNVS保存) / `0x03`=FACTORY(工場出荷) / `0x05`=POWER / `0x06`=BRIGHTNESS(idx) / `0x07`=CHANNEL(mask)
 

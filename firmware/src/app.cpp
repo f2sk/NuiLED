@@ -47,8 +47,8 @@ void appSetActiveSlot(uint8_t slot) {
   if (slot >= NUM_SLOTS) return;
   g_state.activeSlot = slot;
   // プリセットの想定チャンネルを反映（SW2長押しの一時上書きはリセット）
-  uint8_t m = presetsGet(slot).flags & CH_BOTH;
-  g_state.channelMask = (m == 0) ? CH_BOTH : m;
+  uint8_t m = presetsGet(slot).flags & CH_ALL;
+  g_state.channelMask = (m == 0) ? CH_ALL : m;
   storeSave(g_state);
   bleNotifyState();
 }
@@ -58,7 +58,7 @@ void appNextPreset() { appSetActiveSlot((g_state.activeSlot + 1) % NUM_SLOTS); }
 void appCycleChannel() { appSetChannelMask(nextChannelMask(g_state.channelMask)); }
 
 void appSetChannelMask(uint8_t m) {
-  if (m == 0 || m > CH_BOTH) m = CH_BOTH;
+  if (m == 0 || m > CH_ALL) m = CH_ALL;
   g_state.channelMask = m;
   storeSave(g_state);
   bleNotifyState();
