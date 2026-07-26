@@ -46,9 +46,7 @@ void appSetBrightness(uint8_t idx) {
 void appSetActiveSlot(uint8_t slot) {
   if (slot >= NUM_SLOTS) return;
   g_state.activeSlot = slot;
-  // プリセットの想定チャンネルを反映（SW2長押しの一時上書きはリセット）
-  uint8_t m = presetsGet(slot).flags & CH_ALL;
-  g_state.channelMask = (m == 0) ? CH_ALL : m;
+  // channelMaskはプリセットから独立したグローバル設定。適用時にリセットしない。
   storeSave(g_state);
   bleNotifyState();
 }

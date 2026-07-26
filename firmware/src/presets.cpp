@@ -32,58 +32,52 @@ static void cat3(uint8_t* dst, const uint8_t* a, const uint8_t* b, const uint8_t
 // 実機ではWeb UI（チャンネル明るさ）やSW1（マスタ）で引き上げる前提。
 static const uint8_t TB = 90;
 
+// 全プリセットは全ゾーン定義＋全ON（flags=CH_ALL）。チャンネルON/OFFはトグルで動的操作。
+// 差別化は「中身（演出・色）」で行う。Front=暖白solid(照明)を共通、Back/Groundで差をつける。
 static void factory() {
   uint8_t two[6], three[9];
 
-  // 全スロット共通：Ground=暖白のアンビエント（後でUIで変更可）
-  for (uint8_t i = 0; i < NUM_SLOTS; i++)
-    mkChan(g_slots[i].ground, EFF_SOLID, 0, 0, TB, 1, WARM);
+  for (uint8_t i = 0; i < NUM_SLOTS; i++) {
+    mkChan(g_slots[i].front, EFF_SOLID, 0, 0, TB, 1, WARM);  // 照明は暖白solid共通
+    g_slots[i].flags = CH_ALL;
+  }
 
-  // slot0: 暖白のみ（Front単色、Back無効）
-  mkChan(g_slots[0].front, EFF_SOLID, 0, 0, TB, 1, WARM);
-  mkChan(g_slots[0].back,  EFF_SOLID, 0, 0, TB, 1, WARM);
-  g_slots[0].flags = CH_FRONT | CH_GROUND;
-
-  // slot1: 暖白 + 桃橙ブレス
+  // 0: 桃橙ブレス（Back揺らぎ、Ground暖白）
   cat2(two, PINK, ORANGE);
-  mkChan(g_slots[1].front, EFF_SOLID,  0, 0, TB, 1, WARM);
-  mkChan(g_slots[1].back,  EFF_BREATH, 64, 0, TB, 2, two);
-  g_slots[1].flags = CH_ALL;
+  mkChan(g_slots[0].back,   EFF_BREATH, 64, 0, TB, 2, two);
+  mkChan(g_slots[0].ground, EFF_SOLID,   0, 0, TB, 1, WARM);
 
-  // slot2: 暖白 + 桃橙ウェーブ
+  // 1: 桃橙ウェーブ
   cat2(two, ORANGE, PINK);
-  mkChan(g_slots[2].front, EFF_SOLID, 0, 0, TB, 1, WARM);
-  mkChan(g_slots[2].back,  EFF_WAVE, 128, 0, TB, 2, two);
-  g_slots[2].flags = CH_ALL;
+  mkChan(g_slots[1].back,   EFF_WAVE, 128, 0, TB, 2, two);
+  mkChan(g_slots[1].ground, EFF_SOLID,  0, 0, TB, 1, WARM);
 
-  // slot3: 暖白 + 桃橙チェイス
+  // 2: 桃橙チェイス
   cat2(two, PINK, ORANGE);
-  mkChan(g_slots[3].front, EFF_SOLID,  0, 0, TB, 1, WARM);
-  mkChan(g_slots[3].back,  EFF_CHASE, 128, 0, TB, 2, two);
-  g_slots[3].flags = CH_ALL;
+  mkChan(g_slots[2].back,   EFF_CHASE, 128, 0, TB, 2, two);
+  mkChan(g_slots[2].ground, EFF_SOLID,   0, 0, TB, 1, WARM);
 
-  // slot4: 暖白 + 3色交互（周期5LED）
+  // 3: 3色交互（周期5LED）
   cat3(three, PINK, ORANGE, WARM);
-  mkChan(g_slots[4].front, EFF_SOLID,     0, 0, TB, 1, WARM);
-  mkChan(g_slots[4].back,  EFF_ALTERNATE, 40, 5, TB, 3, three);
-  g_slots[4].flags = CH_ALL;
+  mkChan(g_slots[3].back,   EFF_ALTERNATE, 40, 5, TB, 3, three);
+  mkChan(g_slots[3].ground, EFF_SOLID,      0, 0, TB, 1, WARM);
 
-  // slot5: Back桃橙ブレスのみ（Front無効）
+  // 4: ピンク基調（Back/Groundともピンクsolid）
+  mkChan(g_slots[4].back,   EFF_SOLID, 0, 0, TB, 1, PINK);
+  mkChan(g_slots[4].ground, EFF_SOLID, 0, 0, TB, 1, PINK);
+
+  // 5: オレンジ基調
+  mkChan(g_slots[5].back,   EFF_SOLID, 0, 0, TB, 1, ORANGE);
+  mkChan(g_slots[5].ground, EFF_SOLID, 0, 0, TB, 1, ORANGE);
+
+  // 6: 全体桃橙ゆらぎ（Back/Groundともブレス）
   cat2(two, PINK, ORANGE);
-  mkChan(g_slots[5].front, EFF_SOLID,  0, 0, TB, 1, WARM);
-  mkChan(g_slots[5].back,  EFF_BREATH, 40, 0, TB, 2, two);
-  g_slots[5].flags = CH_BACK | CH_GROUND;
+  mkChan(g_slots[6].back,   EFF_BREATH, 40, 0, TB, 2, two);
+  mkChan(g_slots[6].ground, EFF_BREATH, 40, 0, TB, 2, two);
 
-  // slot6: Back速ウェーブのみ
-  cat2(two, PINK, ORANGE);
-  mkChan(g_slots[6].front, EFF_SOLID, 0, 0, TB, 1, WARM);
-  mkChan(g_slots[6].back,  EFF_WAVE, 220, 0, TB, 2, two);
-  g_slots[6].flags = CH_BACK | CH_GROUND;
-
-  // slot7: 暖白のみ（予備）
-  mkChan(g_slots[7].front, EFF_SOLID, 0, 0, TB, 1, WARM);
-  mkChan(g_slots[7].back,  EFF_SOLID, 0, 0, TB, 1, WARM);
-  g_slots[7].flags = CH_FRONT | CH_GROUND;
+  // 7: 静か（全体暖白solid）
+  mkChan(g_slots[7].back,   EFF_SOLID, 0, 0, TB, 1, WARM);
+  mkChan(g_slots[7].ground, EFF_SOLID, 0, 0, TB, 1, WARM);
 }
 
 void presetsLoad() {

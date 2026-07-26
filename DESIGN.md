@@ -265,6 +265,8 @@ Preset(70byte) = Front + Back + Ground の3チャンネル＋flags。各チャ�
 - Front / Back = 各線の壁[17..59]（43球）。`SWAP_WALL` で線A/線Bの壁割当を入れ替え（コネクタ逆対応）
 - チャンネルマスク: CH_FRONT=1 / CH_BACK=2 / CH_GROUND=4
 
+**チャンネル選択はプリセットから独立したグローバル設定**：どのゾーンを表示するかは `channelMask`（SW2長押し／BLE CHANNEL／Web操作パネルのトグル）で決め、プリセット適用時にリセットしない。プリセットは常に3ゾーンの中身を持つ（`flags` はレイアウト保持のため残すが表示判定には使わず、renderは `channelMask` のみで判定）。→ 「チャンネルを絞っただけの冗長プリセット」が不要になる。
+
 Commandオペコード: `0x01`=APPLY(スロット適用) / `0x02`=SAVE(全スロットNVS保存) / `0x03`=FACTORY(工場出荷) / `0x05`=POWER / `0x06`=BRIGHTNESS(idx) / `0x07`=CHANNEL(mask)
 
 ①の操作フロー：接続 → SlotSelect書込 → PresetData読/書 → Command 0x02(SAVE) → 切断

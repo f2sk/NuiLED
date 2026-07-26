@@ -87,9 +87,10 @@ static void renderChannel(CRGB* buf, uint16_t n, const ChannelPreset& c, uint32_
 }
 
 void ledsRender(const AppState& s, const Preset& p, uint32_t now) {
-  const bool fe = (p.flags & CH_FRONT)  && (s.channelMask & CH_FRONT);
-  const bool be = (p.flags & CH_BACK)   && (s.channelMask & CH_BACK);
-  const bool ge = (p.flags & CH_GROUND) && (s.channelMask & CH_GROUND);
+  // チャンネル表示はグローバルのchannelMaskのみで決定（プリセットのflagsからは独立）
+  const bool fe = s.channelMask & CH_FRONT;
+  const bool be = s.channelMask & CH_BACK;
+  const bool ge = s.channelMask & CH_GROUND;
 
   // 壁の割り当て（コネクタ逆対応）：どちらの線の壁がFront/Backか
   CRGB* frontLine = SWAP_WALL ? lineB : lineA;
