@@ -58,7 +58,7 @@ void appNextPreset() { appSetActiveSlot((g_state.activeSlot + 1) % NUM_SLOTS); }
 void appCycleChannel() { appSetChannelMask(nextChannelMask(g_state.channelMask)); }
 
 void appSetChannelMask(uint8_t m) {
-  if (m == 0 || m > CH_ALL) m = CH_ALL;
+  m &= CH_ALL;   // 無効ビット除去。0(全ゾーンOFF)も許容＝独立トグル
   g_state.channelMask = m;
   storeSave(g_state);
   bleNotifyState();

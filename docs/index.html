@@ -118,10 +118,10 @@
       </div>
       <div class="row" style="margin-top:8px">
         <span class="muted">出力</span>
-        <button class="ch sm" data-m="7">全て</button>
-        <button class="ch sm" data-m="1">Front</button>
-        <button class="ch sm" data-m="2">Back</button>
-        <button class="ch sm" data-m="4">Ground</button>
+        <button id="chAll" class="sm">全て</button>
+        <button class="chtog sm" data-b="1">Front</button>
+        <button class="chtog sm" data-b="2">Back</button>
+        <button class="chtog sm" data-b="4">Ground</button>
       </div>
       <div class="row" style="margin-top:8px">
         <button id="btnSwapLive" class="sm">現在モードの Front⇄Back 入れ替え</button>
@@ -244,7 +244,7 @@ function decodePreset(dv){ return { name:'', front:decodeChan(dv,0), back:decode
 
 // ===== BLE =====
 let dev,chState,chSlot,chPData,chCmd;
-let numSlots=8, activeSlot=0, deviceSlots=[];
+let numSlots=8, activeSlot=0, deviceSlots=[], channelMask=7;
 const connected = ()=>!!(dev&&dev.gatt&&dev.gatt.connected);
 async function wc(ch,arr){ const b=new Uint8Array(arr);
   if(ch.writeValueWithResponse) await ch.writeValueWithResponse(b); else await ch.writeValue(b); }
@@ -277,10 +277,12 @@ function setConn(on){
 }
 
 function parseState(dv){
-  const power=dv.getUint8(0); activeSlot=dv.getUint8(2); numSlots=dv.getUint8(4)||8;
+  const power=dv.getUint8(0); activeSlot=dv.getUint8(2); channelMask=dv.getUint8(3); numSlots=dv.getUint8(4)||8;
   $('btnPower').textContent = power?'電源 OFF':'電源 ON';
-  renderSlots();
+  renderChBtns(); renderSlots();
 }
+function renderChBtns(){ document.querySelectorAll('.chtog').forEach(b=>
+  b.classList.toggle('fill', !!(channelMask & +b.dataset.b))); }
 
 // ===== 本体スロット一覧 =====
 async function syncSlots(){
@@ -323,7 +325,9 @@ $('btnSwapLive').onclick=async()=>{
 // 全体操作
 $('btnPower').onclick=()=>wc(chCmd,[CMD.POWER, $('btnPower').textContent.includes('ON')?1:0]);
 document.querySelectorAll('.bri').forEach(b=>b.onclick=()=>wc(chCmd,[CMD.BRIGHTNESS,+b.dataset.i]));
-document.querySelectorAll('.ch').forEach(b=>b.onclick=()=>wc(chCmd,[CMD.CHANNEL,+b.dataset.m]));
+// Front/Back/Ground は独立トグル（ビットXOR）。全ては一括ON
+$('chAll').onclick=()=>{ if(connected()) wc(chCmd,[CMD.CHANNEL,7]); };
+document.querySelectorAll('.chtog').forEach(b=>b.onclick=()=>{ if(connected()) wc(chCmd,[CMD.CHANNEL, channelMask ^ +b.dataset.b]); });
 
 // ===== ライブラリ / 編集 =====
 function renderLib(){
