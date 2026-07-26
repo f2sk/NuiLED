@@ -123,6 +123,9 @@
         <button class="ch sm" data-m="2">Back</button>
         <button class="ch sm" data-m="4">Ground</button>
       </div>
+      <div class="row" style="margin-top:8px">
+        <button id="btnSwapLive" class="sm">現在モードの Front⇄Back 入れ替え</button>
+      </div>
     </section>
 
     <section id="opSlots" class="offline">
@@ -308,6 +311,14 @@ function renderSlots(){
   });
 }
 $('btnSync').onclick=()=>{ if(connected()) syncSlots(); };
+// 現在モード（点灯中スロット）のFront/Backを即入れ替え（ライブ。NVS保存は作成タブから）
+$('btnSwapLive').onclick=async()=>{
+  if(!connected()||!deviceSlots[activeSlot]) return;
+  const p=deviceSlots[activeSlot];
+  [p.front,p.back]=[p.back,p.front]; [p.enFront,p.enBack]=[p.enBack,p.enFront];
+  await wc(chSlot,[activeSlot]); await wc(chPData,Array.from(encodePreset(p)));
+  await wc(chCmd,[CMD.APPLY,activeSlot]); await syncSlots();
+};
 
 // 全体操作
 $('btnPower').onclick=()=>wc(chCmd,[CMD.POWER, $('btnPower').textContent.includes('ON')?1:0]);
